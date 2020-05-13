@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package addressobserver
+package v2alpha1activemqartemisaddress
 
 import (
 	"fmt"
 	"time"
+	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -29,14 +30,19 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	//"github.com/rh-messaging/activemq-artemis-operator/pkg/apis/broker/v2alpha1"
 	clientv2alpha1 "github.com/rh-messaging/activemq-artemis-operator/pkg/client/clientset/versioned/typed/broker/v2alpha1"
 	"k8s.io/client-go/tools/clientcmd"
+	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
+	mgmt "github.com/artemiscloud/activemq-artemis-management"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-var log = logf.Log.WithName("addressobserver_v2alpha1activemqartemisaddress")
+//var log = logf.Log.WithName("addressobserver_v2alpha1activemqartemisaddress")
 
 const AnnotationStatefulSet = "statefulsets.kubernetes.io/drainer-pod-owner"
 const AnnotationDrainerPodTemplate = "statefulsets.kubernetes.io/drainer-pod-template"
@@ -44,6 +50,7 @@ const AnnotationDrainerPodTemplate = "statefulsets.kubernetes.io/drainer-pod-tem
 type AddressObserver struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
+	opclient client.Client
 
 	statefulSetLister  appslisters.StatefulSetLister
 	statefulSetsSynced cache.InformerSynced
@@ -56,7 +63,8 @@ type AddressObserver struct {
 func NewAddressObserver(
 	kubeclientset kubernetes.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	namespace string) *AddressObserver {
+	namespace string,
+	client client.Client) *AddressObserver {
 
 	statefulSetInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
@@ -64,6 +72,7 @@ func NewAddressObserver(
 
 	observer := &AddressObserver{
 		kubeclientset:      kubeclientset,
+		opclient:			client,
 		statefulSetLister:  statefulSetInformer.Lister(),
 		statefulSetsSynced: statefulSetInformer.Informer().HasSynced,
 		podLister:          podInformer.Lister(),
@@ -174,36 +183,14 @@ func (c *AddressObserver) newPod(obj interface{}) {
 
         //c.enqueueStatefulSet(sts)
 		//now send the pod all crs
-		c.checkCRsForPod(&object)
+		c.checkCRsForPod(&object, sts)
 		return
 	}
 }
 
-func (c *AddressObserver) checkCRsForPod(object *metav1.Object) {
+func (c *AddressObserver) checkCRsForPod(object *metav1.Object, sts *appsv1.StatefulSet) {
 
 	fmt.Printf("****Checking CRs for Pod: %v\n", object)
-
-	apiLists, err := c.kubeclientset.Discovery().ServerResourcesForGroupVersion("broker.amq.io/v2alpha1")
-//	apiLists, err := c.kubeclientset.Discovery().ServerResources()
-	if err != nil {
-		fmt.Printf("**** Error get server resources: %v\n", err)
-		return;
-	}
-			for _, r := range apiLists.APIResources {
-				fmt.Printf("**** checking up kind: %v\n", r.Kind)
-				if r.Kind == "ActiveMQArtemisAddress" {
-					fmt.Printf("**** found the resource!!! %v\n", r)
-					fmt.Printf("string of it %v\n", r.String())
-					fmt.Printf("categories: %s\n", r.Categories)
-					fmt.Printf("resource name: %s\n", r.Name)
-					fmt.Printf("resource size: %d\n", r.Size())
-					fmt.Printf("verbs %v\n", r.Verbs)
-					fmt.Printf("Group**** %v\n", r.Group)
-					
-				}
-			}
-
-//	result := v2alpha1.ActiveMQArtemisAddressList{}
 	cfg, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
 		log.Error(err, "Error building kubeconfig: %s", err.Error())
@@ -220,38 +207,61 @@ func (c *AddressObserver) checkCRsForPod(object *metav1.Object) {
 		fmt.Printf("**** Failed to get address resources %v\n", listerr)
 		return		
 	}
-/*
-	restClient := c.kubeclientset.CoreV1().RESTClient();
-	err1 := restClient.Get().Namespace((*object).GetNamespace()).Resource("ActiveMQArtemisAddress").Do().Into(&result);
-	
-	if err1 != nil {
-		fmt.Printf("**** Failed to get address resources %v\n", err1)
-		return
-	}
-*/
-	fmt.Printf("***** Found the result, %v\n", result.Items)
 
-	for _, a := range result.Items {
-		fmt.Printf("++++++++Address: %v, Queue: %v, RoutingType: %v\n", a.Spec.AddressName, a.Spec.QueueName, a.Spec.RoutingType)
+	fmt.Printf("***** Found the result, %v\n", result.Items)
+	if len(result.Items) == 0 {
+		fmt.Printf("_++++ no crs found, return");
+		return;
 	}
-	
-	fmt.Printf("******** done cr\n")
-			
-	/*
-	for _, apiList := range apiLists {
-        fmt.Printf("Checking up apiGroupVersion: %v\n", apiList.GroupVersion)
-		if apiList.GroupVersion == "broker.amq.io/v2alpha1" {
-			for _, r := range apiList.APIResources {
-				fmt.Printf("**** checking up kind: %v\n", r.Kind)
-				if r.Kind == "ActiveMQArtemisAddress" {
-					fmt.Printf("**** found the resource!!! %v\n", r)
-					fmt.Printf("string of it %v\n", r.String())
-					fmt.Printf("categories: %s\n", r.Categories)
-					fmt.Printf("resource name: %s\n", r.Name)
-					fmt.Printf("resource size: %d\n", r.Size())
+
+	pod := &corev1.Pod{}
+
+	podNamespacedName := types.NamespacedName{
+			Name:      (*object).GetName(),
+			Namespace: (*object).GetNamespace(),
+	}
+
+	if err = c.opclient.Get(context.TODO(), podNamespacedName, pod); err != nil {
+				if errors.IsNotFound(err) {
+					log.Error(err, "Pod IsNotFound", "Namespace", podNamespacedName.Namespace, "Name", podNamespacedName.Namespace)
+				} else {
+					log.Error(err, "Pod lookup error", "Namespace", podNamespacedName.Namespace, "Name", podNamespacedName.Namespace)
+				}
+			} else {
+				//found pod
+				containers := pod.Spec.Containers //get env from this
+				var jolokiaUser string
+				var jolokiaPassword string
+				if len(containers) == 1 {
+					envVars := containers[0].Env
+					for _, oneVar := range envVars {
+						if "AMQ_USER" == oneVar.Name {
+							jolokiaUser = getEnvVarValue(&oneVar, &podNamespacedName, sts, c.opclient)
+						}
+						if "AMQ_PASSWORD" == oneVar.Name {
+							jolokiaPassword = getEnvVarValue(&oneVar, &podNamespacedName, sts, c.opclient)
+						}
+						if jolokiaUser != "" && jolokiaPassword != "" {
+							break
+						}
+					}
+				}
+
+				log.Info("New Jololia with ", "User: ", jolokiaUser, "Password: ", jolokiaPassword)
+				artemis := mgmt.NewArtemis(pod.Status.PodIP, "8161", "amq-broker", jolokiaUser, jolokiaPassword)
+
+				for _, a := range result.Items {
+					fmt.Printf("++++++++Address: %v, Queue: %v, RoutingType: %v\n", a.Spec.AddressName, a.Spec.QueueName, a.Spec.RoutingType)
+		
+					_, err := artemis.CreateQueue(a.Spec.AddressName, a.Spec.QueueName, a.Spec.RoutingType)
+					if nil != err {
+						log.Info("***Creating ActiveMQArtemisAddress error for " + a.Spec.QueueName)
+					} else {
+						log.Info("*** Successfully Created ActiveMQArtemisAddress for " + a.Spec.QueueName)
+					}
 				}
 			}
-		}
-	}
-	*/
+
+	
+	fmt.Printf("******** done cr\n")
 }

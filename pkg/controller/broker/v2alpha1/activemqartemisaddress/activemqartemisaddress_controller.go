@@ -5,7 +5,6 @@ import (
 	brokerv2alpha1 "github.com/rh-messaging/activemq-artemis-operator/pkg/apis/broker/v2alpha1"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources/secrets"
-	"github.com/rh-messaging/activemq-artemis-operator/pkg/utils/addressobserver"
 	ss "github.com/rh-messaging/activemq-artemis-operator/pkg/resources/statefulsets"
 	mgmt "github.com/artemiscloud/activemq-artemis-management"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,11 +43,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	go setupAddressObserver()
+	go setupAddressObserver(mgr)
 	return &ReconcileActiveMQArtemisAddress{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
-func setupAddressObserver() {
+func setupAddressObserver(mgr manager.Manager) {
 	log.Info("Setting up address observer")
 	cfg, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
@@ -70,7 +69,7 @@ func setupAddressObserver() {
 	}
 	kubeInformerFactory = kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, namespace, nil)
 
-    observer := addressobserver.NewAddressObserver(kubeClient, kubeInformerFactory, namespace)
+    observer := NewAddressObserver(kubeClient, kubeInformerFactory, namespace, mgr.GetClient())
 
     stopCh := make(chan struct{})
 	go kubeInformerFactory.Start(stopCh)
@@ -86,7 +85,7 @@ func setupAddressObserver() {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	
+
 	// Create a new controller
 	c, err := controller.New("v2alpha1activemqartemisaddress-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
