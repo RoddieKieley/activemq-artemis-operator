@@ -5,4 +5,4 @@ metadata:
 spec:
   deploymentPlan:
     size: 1
-    image: quay.io/artemiscloud/activemq-artemis-operator:latest
+    image: quay.io/hgao/amq-openshift-image:amq76

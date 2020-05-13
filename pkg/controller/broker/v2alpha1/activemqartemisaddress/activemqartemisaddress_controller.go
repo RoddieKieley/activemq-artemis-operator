@@ -5,6 +5,7 @@ import (
 	brokerv2alpha1 "github.com/rh-messaging/activemq-artemis-operator/pkg/apis/broker/v2alpha1"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources/secrets"
+	"github.com/rh-messaging/activemq-artemis-operator/pkg/utils/addressobserver"
 	ss "github.com/rh-messaging/activemq-artemis-operator/pkg/resources/statefulsets"
 	mgmt "github.com/artemiscloud/activemq-artemis-management"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,6 +21,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/kubernetes"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"time"
 )
 
 var log = logf.Log.WithName("controller_v2alpha1activemqartemisaddress")
@@ -38,11 +44,49 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+	go setupAddressObserver()
 	return &ReconcileActiveMQArtemisAddress{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+}
+
+func setupAddressObserver() {
+	log.Info("Setting up address observer")
+	cfg, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		log.Error(err, "Error building kubeconfig: %s", err.Error())
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "Error building kubernetes clientset: %s", err.Error())
+	}
+
+	var kubeInformerFactory kubeinformers.SharedInformerFactory
+	
+	namespace, err := k8sutil.GetWatchNamespace()
+
+	if err != nil {
+		log.Error(err, "Failed to get watch namespace")
+		return
+	}
+	kubeInformerFactory = kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, namespace, nil)
+
+    observer := addressobserver.NewAddressObserver(kubeClient, kubeInformerFactory, namespace)
+
+    stopCh := make(chan struct{})
+	go kubeInformerFactory.Start(stopCh)
+
+	if err = observer.Run(stopCh); err != nil {
+		log.Info("===== failed to run drainer", "error", err.Error())
+		log.Error(err, "Error running controller: %s", err.Error())
+	}
+
+	log.Info("==== OK, finish setup address observer")
+    return
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	
 	// Create a new controller
 	c, err := controller.New("v2alpha1activemqartemisaddress-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -77,6 +121,7 @@ type ReconcileActiveMQArtemisAddress struct {
 	client client.Client
 	scheme *runtime.Scheme
 }
+
 
 // Reconcile reads that state of the cluster for a ActiveMQArtemisAddress object and makes changes based on the state read
 // and what is in the ActiveMQArtemisAddress.Spec

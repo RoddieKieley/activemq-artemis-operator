@@ -140,7 +140,7 @@ func (r *ReconcileActiveMQArtemisScaledown) Reconcile(request reconcile.Request)
 
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
 	if localOnly {
-		reqLogger.Info("==== in localOnly mode")
+		reqLogger.Info("in localOnly mode")
 		if namespace == "" {
 			bytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 			if err != nil {
