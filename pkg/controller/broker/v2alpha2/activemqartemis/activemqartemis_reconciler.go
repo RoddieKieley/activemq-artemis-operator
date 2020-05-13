@@ -8,6 +8,7 @@ import (
 	"github.com/RHsyseng/operator-utils/pkg/resource/compare"
 	"github.com/RHsyseng/operator-utils/pkg/resource/read"
 	"github.com/RHsyseng/operator-utils/pkg/resource/write"
+	v2alpha1activemqartemisaddress "github.com/rh-messaging/activemq-artemis-operator/pkg/controller/broker/v2alpha1/activemqartemisaddress"
 	activemqartemisscaledown "github.com/rh-messaging/activemq-artemis-operator/pkg/controller/broker/v2alpha1/activemqartemisscaledown"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources/containers"
@@ -61,6 +62,8 @@ const (
 
 var defaultMessageMigration bool = true
 var requestedResources []resource.KubernetesResource
+var lastStatus olm.DeploymentStatus
+var firstTime = false
 
 type ActiveMQArtemisReconciler struct {
 	statefulSetUpdates uint32
@@ -1223,6 +1226,7 @@ func GetPodStatus(cr *brokerv2alpha2.ActiveMQArtemis, client client.Client, name
 	reqLogger := log.WithValues("ActiveMQArtemis Name", namespacedName.Name)
 	reqLogger.Info("Getting status for pods")
 	var status olm.DeploymentStatus
+
 	sfsFound := &appsv1.StatefulSet{}
 
 	err := client.Get(context.TODO(), namespacedName, sfsFound)
@@ -1235,6 +1239,18 @@ func GetPodStatus(cr *brokerv2alpha2.ActiveMQArtemis, client client.Client, name
 			status = olm.GetSingleDaemonSetStatus(*dsFound)
 		}
 	}
+
+	// TODO: Remove global usage
+	log.Info("lastStatus.Ready len is " + string(len(lastStatus.Ready)))
+	log.Info("status.Ready len is " + string(len(status.Ready)))
+	if len(status.Ready) > len(lastStatus.Ready) {
+		// More pods ready, let the address controller know
+		newPodCount := len(status.Ready) - len(lastStatus.Ready)
+		for i := newPodCount-1; i < len(status.Ready); i++ {
+			v2alpha1activemqartemisaddress.C <- status.Ready[i]
+		}
+	}
+	lastStatus = status
 
 	return status
 }

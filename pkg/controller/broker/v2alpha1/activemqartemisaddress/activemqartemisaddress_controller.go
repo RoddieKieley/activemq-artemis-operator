@@ -2,6 +2,7 @@ package v2alpha1activemqartemisaddress
 
 import (
 	"context"
+	//"github.com/RHsyseng/operator-utils/pkg/olm"
 	brokerv2alpha1 "github.com/rh-messaging/activemq-artemis-operator/pkg/apis/broker/v2alpha1"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources"
 	"github.com/rh-messaging/activemq-artemis-operator/pkg/resources/secrets"
@@ -30,6 +31,8 @@ import (
 var log = logf.Log.WithName("controller_v2alpha1activemqartemisaddress")
 var namespacedNameToAddressName = make(map[types.NamespacedName]brokerv2alpha1.ActiveMQArtemisAddress)
 
+var C = make(chan string)
+
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -43,11 +46,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	go setupAddressObserver(mgr)
+	go setupAddressObserver(mgr, C)
 	return &ReconcileActiveMQArtemisAddress{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
-func setupAddressObserver(mgr manager.Manager) {
+func setupAddressObserver(mgr manager.Manager, c chan string) {
 	log.Info("Setting up address observer")
 	cfg, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
@@ -71,11 +74,11 @@ func setupAddressObserver(mgr manager.Manager) {
 
     observer := NewAddressObserver(kubeClient, kubeInformerFactory, namespace, mgr.GetClient())
 
-    stopCh := make(chan struct{})
+	stopCh := make(chan struct{})
 	go kubeInformerFactory.Start(stopCh)
 
-	if err = observer.Run(stopCh); err != nil {
-		log.Info("===== failed to run drainer", "error", err.Error())
+	if err = observer.Run(stopCh, C); err != nil {
+		log.Info("===== failed to run observer", "error", err.Error())
 		log.Error(err, "Error running controller: %s", err.Error())
 	}
 

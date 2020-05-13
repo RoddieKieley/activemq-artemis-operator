@@ -95,7 +95,7 @@ func NewAddressObserver(
 	return observer
 }
 
-func (c *AddressObserver) Run(stopCh <-chan struct{}) error {
+func (c *AddressObserver) Run(stopCh <-chan struct{}, C chan string) error {
 
     //if we don't need to block
     //then we probably don't need those defers
@@ -103,20 +103,36 @@ func (c *AddressObserver) Run(stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	log.Info("Starting StatefulSet scaledown cleanup controller")
+	log.Info("#### Starting StatefulSet address cleanup controller")
 
 	// Wait for the caches to be synced before starting workers
-	log.Info("Waiting for informer caches to sync")
+	log.Info("#### Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.statefulSetsSynced, c.podsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	log.Info("Starting workers")
+	log.Info("#### Starting workers")
 	go wait.Until(c.runWorker, time.Second, stopCh)
 
-	log.Info("Started workers")
-	<-stopCh
-	log.Info("Shutting down workers")
+	log.Info("#### Started workers")
+	//<-stopCh
+	for {
+		select {
+		case <- stopCh:
+			log.Info("address_observer received stopCh")
+			break
+		case c := <-C:
+			// TODO: Use c.
+			// NOTE: c will be one ordinal higher than the real podname!
+			log.Info("address_observer received C as " + c)
+		default:
+			//log.Info("address_observer selected default, waiting a second")
+			// NOTE: Sender will be blocked if this select is sleeping, might need decreased time here
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}
+
+	log.Info("#### Shutting down workers")
 
 	return nil
 }
