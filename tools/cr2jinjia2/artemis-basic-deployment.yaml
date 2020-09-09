@@ -6,5 +6,8 @@ spec:
   deploymentPlan:
     size: 1
     image: quay.io/hgao/amq-openshift-image:cloud-1.0
-  systemPropertyPrefix: _amqx
+  addressSettings:
+    addressSetting:
+    - deadLetterAddress: dlqamq
+
 

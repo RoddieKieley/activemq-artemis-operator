@@ -5,6 +5,6 @@ import (
 )
 
 /* return a yaml string */
-func MakeBrokerCfgOverrides(customeResource *brokerv3alpha1.ActiveMQArtemis) string {
+func MakeBrokerCfgOverrides(customeResource *brokerv3alpha1.ActiveMQArtemis, envVar *string, output *string) string {
 	return "broker_home: /opt/artemis-2.14.0"
 }
