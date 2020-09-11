@@ -7,3 +7,4 @@ spec:
     size: 1
     image: quay.io/hgao/amq-openshift-image:cloud-1.0
 
+
