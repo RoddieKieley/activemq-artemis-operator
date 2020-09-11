@@ -1223,13 +1223,16 @@ func NewPodTemplateSpecForCR(customResource *brokerv3alpha1.ActiveMQArtemis) cor
 	Spec := corev1.PodSpec{}
 	Containers := []corev1.Container{}
 	
-	brokerYaml := cr2jinja2.MakeBrokerCfgOverrides(customResource)
+	envVar := "GetFromSomewhere?"
+	output := "/tools/broker.yaml"
+	
+	brokerYaml := cr2jinja2.MakeBrokerCfgOverrides(customResource, &envVar, &output)
 	
 	InitContainers := []corev1.Container {
 		{
 			Name:	"activemq-artemis-init",
 			Image:	"quay.io/hgao/init-container:bug2885",
-//			Command:	[]string{"/usr/local/bin/amqcfg", "--help"},
+//			Command:	[]string{"/usr/local/bin/yacfg", "--help"},
 			Command:	[]string{"/bin/bash"},
 			Args:		[]string{"-c", "echo " + brokerYaml + " > /tools/broker.yaml; "},
 		},
