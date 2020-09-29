@@ -34,7 +34,7 @@ func Create(owner v1.Object, namespacedName types.NamespacedName, client client.
 	// Call k8s create for service
 	if err = client.Create(context.TODO(), objectDefinition); err != nil {
 		// Add error detail for use later
-		reqLogger.Info("Failed to creating new " + objectTypeString)
+		reqLogger.Info("Failed to create new " + objectTypeString)
 	}
 	reqLogger.Info("Created new " + objectTypeString)
 
@@ -42,7 +42,6 @@ func Create(owner v1.Object, namespacedName types.NamespacedName, client client.
 }
 
 // TODO: Evaluate performance impact of using reflect
-//func Retrieve(cr *brokerv2alpha1.ActiveMQArtemis, namespacedName types.NamespacedName, client client.Client, objectDefinition runtime.Object) error {
 func Retrieve(namespacedName types.NamespacedName, client client.Client, objectDefinition runtime.Object) error {
 
 	// Log where we are and what we're doing
@@ -52,11 +51,12 @@ func Retrieve(namespacedName types.NamespacedName, client client.Client, objectD
 
 	var err error = nil
 	if err = client.Get(context.TODO(), namespacedName, objectDefinition); err != nil {
-		if errors.IsNotFound(err) || runtime.IsNotRegisteredError(err) {
-			//reqLogger.Info(objectTypeString+" IsNotFound", "Namespace", cr.Namespace, "Name", cr.Name)
+		if errors.IsNotFound(err) {
 			reqLogger.Info(objectTypeString+" IsNotFound", "Namespace", namespacedName.Namespace, "Name", namespacedName.Name)
+		} else if runtime.IsNotRegisteredError(err) {
+			reqLogger.Info(objectTypeString+" IsNotRegistered", "Namespace", namespacedName.Namespace, "Name", namespacedName.Name)
 		} else {
-			reqLogger.Info(objectTypeString+" found", "Namespace", namespacedName.Namespace, "Name", namespacedName.Name)
+			reqLogger.Info(objectTypeString+" Found", "Namespace", namespacedName.Namespace, "Name", namespacedName.Name)
 		}
 	}
 

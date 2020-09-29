@@ -13,7 +13,6 @@ import (
 	ss "github.com/artemiscloud/activemq-artemis-operator/pkg/resources/statefulsets"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/volumes"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/fsm"
-	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/random"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/selectors"
 	appsv1 "k8s.io/api/apps/v1"
 	//"sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,7 +76,7 @@ func (rs *CreatingK8sResourcesState) generateNames() {
 	secrets.NettyNameBuilder.Prefix(rs.parentFSM.customResource.Name).Base("netty").Suffix("secret").Generate()
 }
 
-func (rs *CreatingK8sResourcesState) generateSecrets() *corev1.Secret {
+func (rs *CreatingK8sResourcesState) generateCredentialsSecretDefinition() *corev1.Secret {
 
 	credentialsSecretName := secrets.CredentialsNameBuilder.Name()
 	namespacedName := types.NamespacedName{
@@ -85,8 +84,19 @@ func (rs *CreatingK8sResourcesState) generateSecrets() *corev1.Secret {
 		Namespace: rs.namespacedName.Namespace,
 	}
 
-	clusterUser := random.GenerateRandomString(8)
-	clusterPassword := random.GenerateRandomString(8)
+	//clusterUser := environments.Retrieve(rs.parentFSM.customResource.Spec)
+	//if "" == clusterUser {
+	//	if amqUserEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_USER"); nil != amqUserEnvVar {
+	//		adminUser = amqUserEnvVar.Value
+	//	} else {
+	//		adminUser = environments.Defaults.AMQ_USER
+	//	}
+	//}
+
+	//clusterUser := random.GenerateRandomString(8)
+	//clusterPassword := random.GenerateRandomString(8)
+	clusterUser := environments.Defaults.AMQ_CLUSTER_USER
+	clusterPassword := environments.Defaults.AMQ_CLUSTER_PASSWORD
 	adminUser := ""
 	adminPassword := ""
 
@@ -107,9 +117,6 @@ func (rs *CreatingK8sResourcesState) generateSecrets() *corev1.Secret {
 		"AMQ_USER":        adminUser,
 		"AMQ_PASSWORD":    adminPassword,
 	}
-	// TODO: Remove this hack
-	environments.GLOBAL_AMQ_CLUSTER_USER = clusterUser
-	environments.GLOBAL_AMQ_CLUSTER_PASSWORD = clusterPassword
 
 	secretDefinition := secrets.NewSecret(namespacedName, namespacedName.Name, stringDataMap)
 	//secretDefinition := secrets.Create(rs.parentFSM.customResource, namespacedName, stringDataMap, rs.parentFSM.r.client, rs.parentFSM.r.scheme)
@@ -119,33 +126,70 @@ func (rs *CreatingK8sResourcesState) generateSecrets() *corev1.Secret {
 // First time entering state
 func (rs *CreatingK8sResourcesState) enterFromInvalidState() error {
 
+	// Log where we are and what we're doing
+	reqLogger := log.WithValues("ActiveMQArtemis Name", rs.parentFSM.customResource.Name)
+	reqLogger.Info("CreateK8sResourceState enterFromInvalidstate" )
+
 	var err error = nil
+	var requestedResources []resource.KubernetesResource
 	stepsComplete := rs.stepsComplete
-	firstTime := true
+	//firstTime := true
 
 	rs.generateNames()
 	selectors.LabelBuilder.Base(rs.parentFSM.customResource.Name).Suffix("app").Generate()
-	secretDefinition := rs.generateSecrets()
 
 	//volumes.GLOBAL_DATA_PATH = environments.GetPropertyForCR("AMQ_DATA_DIR", rs.parentFSM.customResource, "/opt/"+rs.parentFSM.customResource.Name+"/data")
 	volumes.GLOBAL_DATA_PATH = "/opt/" + rs.parentFSM.customResource.Name + "/data"
 	labels := selectors.LabelBuilder.Labels()
 
-	namespacedName := types.NamespacedName{
-		Name:      rs.parentFSM.customResource.Name,
+	ssNamespacedName := types.NamespacedName{
+		Name:      ss.NameBuilder.Name(),
 		Namespace: rs.parentFSM.customResource.Namespace,
 	}
-	statefulsetDefinition := NewStatefulSetForCR(rs.parentFSM.customResource)
-	headlessServiceDefinition := svc.NewHeadlessServiceForCR(namespacedName, serviceports.GetDefaultPorts())
-	pingServiceDefinition := svc.NewPingServiceDefinitionForCR(namespacedName, labels, labels)
-
-	//for upgrade
-	var requestedResources []resource.KubernetesResource
-	requestedResources = append(requestedResources, secretDefinition)
-	requestedResources = append(requestedResources, statefulsetDefinition)
+	currentStatefulset, err := ss.RetrieveStatefulSet(ss.NameBuilder.Name(), ssNamespacedName, rs.parentFSM.r.client)
+	if errors.IsNotFound(err) {
+		reqLogger.Info("Statefulset: " + ssNamespacedName.Name + " not found, will create")
+		newStatefulsetDefinition := NewStatefulSetForCR(rs.parentFSM.customResource)
+		requestedResources = append(requestedResources, newStatefulsetDefinition)
+		//firstTime = false
+	} else {
+		reqLogger.Info("Statefulset: " + currentStatefulset.Name + " found")
+		stepsComplete |= CreatedStatefulSet
+	}
+	headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
+	pingServiceDefinition := svc.NewPingServiceDefinitionForCR(ssNamespacedName, labels, labels)
 	requestedResources = append(requestedResources, headlessServiceDefinition)
 	requestedResources = append(requestedResources, pingServiceDefinition)
-	_, stepsComplete = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, statefulsetDefinition, firstTime, requestedResources)
+
+	credentialsSecretName := secrets.CredentialsNameBuilder.Name()
+	credentialsSecretNamespacedName := types.NamespacedName{
+		Name:      credentialsSecretName,
+		Namespace: rs.parentFSM.customResource.Namespace,
+	}
+	stringDataMap := map[string]string{}
+	secretDefinition := secrets.NewSecret(credentialsSecretNamespacedName, credentialsSecretName, stringDataMap)
+	if err = resources.Retrieve(credentialsSecretNamespacedName, rs.parentFSM.r.client, secretDefinition); err != nil {
+		if errors.IsNotFound(err) {
+			reqLogger.Info("Secret: " + credentialsSecretNamespacedName.Name + " not found, will create")
+			credentialsSecretDefinition := rs.generateCredentialsSecretDefinition()
+			requestedResources = append(requestedResources, credentialsSecretDefinition)
+		} else {
+			// secret exists, retrive existing cluster information for the global hack
+			reqLogger.Info("Secret: " + secretDefinition.Name + " found, retrieving cluster details")
+			clusterUser := secretDefinition.StringData["AMQ_CLUSTER_USER"]
+			clusterPassword := secretDefinition.StringData["AMQ_CLUSTER_PASSWORD"]
+
+			// TODO: Remove this hack
+			environments.GLOBAL_AMQ_CLUSTER_USER = clusterUser
+			environments.GLOBAL_AMQ_CLUSTER_PASSWORD = clusterPassword
+		}
+	}
+
+	//if firstTime {
+	//	_, stepsComplete = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, newStatefulsetDefinition, firstTime, requestedResources)
+	//} else {
+	//
+	//}
 
 	rs.stepsComplete = stepsComplete
 
@@ -198,10 +242,12 @@ func (rs *CreatingK8sResourcesState) Update() (error, int) {
 		}
 
 		// Do we need to check for and bounce an observed generation change here?
-		if (rs.stepsComplete&CreatedStatefulSet > 0) &&
-			(rs.stepsComplete&CreatedHeadlessService) > 0 &&
-			(rs.stepsComplete&CreatedPingService > 0) {
-
+		//if (rs.stepsComplete&CreatedStatefulSet > 0) &&
+		//	(rs.stepsComplete&CreatedHeadlessService) > 0 &&
+		//	(rs.stepsComplete&CreatedPingService > 0) {
+		if (rs.stepsComplete&CreatedStatefulSet > 0) { //&&
+			//(rs.stepsComplete&CreatedHeadlessService) > 0 &&
+			//(rs.stepsComplete&CreatedPingService > 0) {
 			firstTime := false
 
 			allObjects = append(allObjects, currentStatefulSet)
@@ -215,7 +261,10 @@ func (rs *CreatingK8sResourcesState) Update() (error, int) {
 			if rs.parentFSM.customResource.Spec.DeploymentPlan.Size != currentStatefulSet.Status.ReadyReplicas {
 				if rs.parentFSM.customResource.Spec.DeploymentPlan.Size > 0 {
 					nextStateID = ScalingID
+					break
 				}
+			} else if currentStatefulSet.Status.ReadyReplicas > 0 {
+				nextStateID = ContainerRunningID
 				break
 			}
 		} else {
@@ -228,7 +277,6 @@ func (rs *CreatingK8sResourcesState) Update() (error, int) {
 
 		break
 	}
-	//pods.UpdatePodStatus(rs.parentFSM.customResource, rs.parentFSM.r.client, ssNamespacedName)
 
 	return err, nextStateID
 }

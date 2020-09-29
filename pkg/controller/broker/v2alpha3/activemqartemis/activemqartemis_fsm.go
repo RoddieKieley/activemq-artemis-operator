@@ -118,10 +118,14 @@ func ID() int {
 
 func (amqbfsm *ActiveMQArtemisFSM) Enter(startStateID int) error {
 
+	var err error = nil
+
 	// For the moment sequentially set stuff up
 	// k8s resource creation and broker environment configuration can probably be done concurrently later
 	amqbfsm.r.result = reconcile.Result{}
-	err := amqbfsm.m.Enter(CreatingK8sResourcesID)
+	if err = amqbfsm.m.Enter(CreatingK8sResourcesID); nil != err {
+		err, _ = amqbfsm.m.Update()
+	}
 
 	return err
 }

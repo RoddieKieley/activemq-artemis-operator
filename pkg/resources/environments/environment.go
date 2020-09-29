@@ -27,8 +27,10 @@ var GLOBAL_AMQ_CLUSTER_USER string = ""
 var GLOBAL_AMQ_CLUSTER_PASSWORD string = ""
 
 type defaults struct {
-	AMQ_USER     string
-	AMQ_PASSWORD string
+	AMQ_USER     			string
+	AMQ_PASSWORD 			string
+	AMQ_CLUSTER_USER 		string
+	AMQ_CLUSTER_PASSWORD	string
 }
 
 var Defaults defaults
@@ -39,6 +41,16 @@ func init() {
 	}
 	if "" == Defaults.AMQ_PASSWORD {
 		Defaults.AMQ_PASSWORD = random.GenerateRandomString(8)
+	}
+	if "" == Defaults.AMQ_CLUSTER_USER {
+		Defaults.AMQ_CLUSTER_USER = random.GenerateRandomString(8)
+		// TODO: remove this hack
+		GLOBAL_AMQ_CLUSTER_USER = Defaults.AMQ_CLUSTER_USER
+	}
+	if "" == Defaults.AMQ_CLUSTER_PASSWORD {
+		Defaults.AMQ_CLUSTER_PASSWORD = random.GenerateRandomString(8)
+		// TODO: remove this hack
+		GLOBAL_AMQ_CLUSTER_PASSWORD = Defaults.AMQ_CLUSTER_PASSWORD
 	}
 }
 

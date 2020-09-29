@@ -95,13 +95,22 @@ func (reconciler *ActiveMQArtemisReconciler) Process(customResource *brokerv2alp
 	envVarName1 := "AMQ_USER"
 	adminUser := customResource.Spec.AdminUser
 	if "" == adminUser {
-		adminUser = environments.Defaults.AMQ_USER
+		if amqUserEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_USER"); nil != amqUserEnvVar {
+			adminUser = amqUserEnvVar.Value
+		} else {
+			adminUser = environments.Defaults.AMQ_USER
+		}
 	}
 
 	envVarName2 := "AMQ_PASSWORD"
 	adminPassword := customResource.Spec.AdminPassword
 	if "" == adminPassword {
-		adminPassword = environments.Defaults.AMQ_PASSWORD
+		//adminPassword = environments.Defaults.AMQ_PASSWORD
+		if amqPasswordEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_PASSWORD"); nil != amqPasswordEnvVar {
+			adminPassword = amqPasswordEnvVar.Value
+		} else {
+			adminPassword = environments.Defaults.AMQ_PASSWORD
+		}
 	}
 
 	envVars := make(map[string]string)
@@ -1012,10 +1021,14 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessUpgrade(customResource *brok
 				if err := resources.Retrieve(namespacedName, client, requested); err != nil {
 					if errors.IsNotFound(err) {
 						if createError = resources.Create(customResource, namespacedName, client, scheme, requested); createError != nil {
-							reqLogger.Error(createError, "Failed to create resource", "kind", kind, "requested", requested)
 						}
 					}
 				}
+			}
+
+			if nil != createError {
+				//reqLogger.Error(createError, "Failed to create resource", "kind", kind, "requested", requested)
+				reqLogger.Info("Failed to create resource", "kind", kind, "requested", requested)
 			}
 		}
 
@@ -1054,37 +1067,42 @@ func getDeployedResources(instance *brokerv2alpha3.ActiveMQArtemis, client clien
 		&corev1.ServiceList{},
 		&appsv1.StatefulSetList{},
 		&routev1.RouteList{},
+		&corev1.SecretList{},
 	)
 	if err != nil {
 		log.Error(err, "Failed to list deployed objects. ", err)
 		return nil, err
 	}
 
-	var secrets []resource.KubernetesResource
-	statefulSets := resourceMap[reflect.TypeOf(appsv1.StatefulSet{})]
-	for _, res := range statefulSets {
-		stfs := res.(*appsv1.StatefulSet)
-		for _, volume := range stfs.Spec.Template.Spec.Volumes {
-			if volume.Secret != nil {
-				name := volume.Secret.SecretName
-				secret := &corev1.Secret{}
-				err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: instance.GetNamespace()}, secret)
-				if err != nil && !errors.IsNotFound(err) {
-
-					log.Error(err, "Failed to load Secret. ", err)
-					return nil, err
-				}
-				for _, ownerRef := range secret.GetOwnerReferences() {
-					if ownerRef.UID == instance.UID {
-						secrets = append(secrets, secret)
-						break
-					}
-				}
-
-			}
-		}
-	}
-	resourceMap[reflect.TypeOf(corev1.Secret{})] = secrets
+	//var secrets []resource.KubernetesResource
+	//statefulSets := resourceMap[reflect.TypeOf(appsv1.StatefulSet{})]
+	//for _, res := range statefulSets {
+	//	stfs := res.(*appsv1.StatefulSet)
+	//	for _, volume := range stfs.Spec.Template.Spec.Volumes {
+	//		if volume.Secret != nil {
+	//			log.Info("getDeployedResources found volume.Secret " + volume.Secret.SecretName)
+	//			name := volume.Secret.SecretName
+	//			secret := &corev1.Secret{}
+	//			err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: instance.GetNamespace()}, secret)
+	//			if err != nil && !errors.IsNotFound(err) {
+	//				log.Error(err, "Failed to load Secret. ", err)
+	//				return nil, err
+	//			} else {
+	//				log.Info("Got secret " + secret.Name)
+	//			}
+	//			log.Info("Current instance UID is " + string(instance.UID))
+	//			for _, ownerRef := range secret.GetOwnerReferences() {
+	//				log.Info("Checking secret " + secret.Name + " for owner reference " + string(ownerRef.UID))
+	//				if ownerRef.UID == instance.UID {
+	//					secrets = append(secrets, secret)
+	//					break
+	//				}
+	//			}
+	//
+	//		}
+	//	}
+	//}
+	//resourceMap[reflect.TypeOf(corev1.Secret{})] = secrets
 
 	return resourceMap, nil
 }
