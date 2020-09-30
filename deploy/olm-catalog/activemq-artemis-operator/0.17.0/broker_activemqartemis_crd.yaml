@@ -43,6 +43,9 @@ spec:
                     description: A single acceptor configuration
                     type: object
                     properties:
+                      amqpMinLargeMessageSize:
+                        description: The default value is 102400 (100KBytes). Setting it to -1 will disable large message support.
+                        type: integer
                       port:
                         description: Port number
                         type: integer

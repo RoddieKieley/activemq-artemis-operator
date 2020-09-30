@@ -186,6 +186,12 @@ spec:
             x-descriptors:
               - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:acceptors'
               - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - description: AMQP Minimum Large Message Size
+            displayName: AMQPMinLargeMessageSize
+            path: acceptors[0].amqpMinLargeMessageSize
+            x-descriptors:
+              - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:acceptors'
+              - 'urn:alm:descriptor:com.tectonic.ui:number'
           - description: Port number
             displayName: Port
             path: acceptors[0].port

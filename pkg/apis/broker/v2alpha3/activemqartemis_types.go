@@ -123,6 +123,7 @@ type AcceptorType struct {
 	AnycastPrefix       string `json:"anycastPrefix,omitempty"`
 	MulticastPrefix     string `json:"multicastPrefix,omitempty"`
 	ConnectionsAllowed  int    `json:"connectionsAllowed,omitempty"`
+	AMQPMinLargeMessageSize int `json:"amqpMinLargeMessageSize,omitempty"`
 }
 
 type ConnectorType struct {
