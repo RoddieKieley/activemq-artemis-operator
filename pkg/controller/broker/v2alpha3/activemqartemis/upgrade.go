@@ -34,7 +34,8 @@ var CompactFullVersionFromMinorVersion map[string]string = map[string]string{
 }
 
 func checkProductUpgrade(cr *api.ActiveMQArtemis) (upgradesMinor, upgradesEnabled bool, err error) {
-	//setDefaults(cr)
+
+	err = nil
 	if isVersionSupported(cr.Spec.Version) {
 		if cr.Spec.Version != LatestVersion && cr.Spec.Upgrades.Enabled {
 			upgradesEnabled = cr.Spec.Upgrades.Enabled

@@ -77,3 +77,40 @@ func Create(owner metav1.Object, namespacedName types.NamespacedName, stringData
 
 	return secretDefinition
 }
+
+//func RetrieveValues(namespacedName types.NamespacedName, secretDefinition *corev1.Secret, client client.Client, scheme *runtime.Scheme) (error, stringDataMap map[string]string)  {
+//
+//	var err error = nil
+//
+//	namespacedName := types.NamespacedName{
+//		Name:      secretName,
+//		Namespace: currentStatefulSet.Namespace,
+//	}
+//	// Attempt to retrieve the secret
+//	stringDataMap := make(map[string]string)
+//	for k := range *envVars {
+//		stringDataMap[k] = (*envVars)[k]
+//	}
+//	secretDefinition := secrets.NewSecret(namespacedName, secretName, stringDataMap)
+//	if err = resources.Retrieve(namespacedName, client, secretDefinition); err != nil {
+//		if errors.IsNotFound(err) {
+//			log.Info("sourceEnvVarFromSecret did not find secret " + secretName)
+//			requestedResources = append(requestedResources, secretDefinition)
+//		}
+//	} else { // err == nil so it already exists
+//		// Exists now
+//		// Check the contents against what we just got above
+//		log.Info("sourceEnvVarFromSecret did found secret " + secretName)
+//
+//		var needUpdate bool = false
+//		for k := range *envVars {
+//			elem, ok := secretDefinition.Data[k]
+//			if 0 != strings.Compare(string(elem), (*envVars)[k]) || !ok {
+//				log.Info("Secret exists but not equals, or not ok", "ok?", ok)
+//				secretDefinition.Data[k] = []byte((*envVars)[k])
+//				needUpdate = true
+//			}
+//		}
+//
+//	return err
+//}

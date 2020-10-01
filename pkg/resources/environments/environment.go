@@ -1,7 +1,6 @@
 package environments
 
 import (
-	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/secrets"
 	svc "github.com/artemiscloud/activemq-artemis-operator/pkg/resources/services"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/random"
 	corev1 "k8s.io/api/core/v1"
@@ -289,25 +288,25 @@ func AddEnvVarForPersistent(customResourceName string) []corev1.EnvVar {
 
 func AddEnvVarForCluster() []corev1.EnvVar {
 
-	clusterUserEnvVarSource := &corev1.EnvVarSource{
-		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: secrets.CredentialsNameBuilder.Name(),
-			},
-			Key:      "clusterUser",
-			Optional: nil,
-		},
-	}
+	//clusterUserEnvVarSource := &corev1.EnvVarSource{
+	//	SecretKeyRef: &corev1.SecretKeySelector{
+	//		LocalObjectReference: corev1.LocalObjectReference{
+	//			Name: secrets.CredentialsNameBuilder.Name(),
+	//		},
+	//		Key:      "clusterUser",
+	//		Optional: nil,
+	//	},
+	//}
 
-	clusterPasswordEnvVarSource := &corev1.EnvVarSource{
-		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: secrets.CredentialsNameBuilder.Name(),
-			},
-			Key:      "clusterPassword",
-			Optional: nil,
-		},
-	}
+	//clusterPasswordEnvVarSource := &corev1.EnvVarSource{
+	//	SecretKeyRef: &corev1.SecretKeySelector{
+	//		LocalObjectReference: corev1.LocalObjectReference{
+	//			Name: secrets.CredentialsNameBuilder.Name(),
+	//		},
+	//		Key:      "clusterPassword",
+	//		Optional: nil,
+	//	},
+	//}
 
 	envVarArray := []corev1.EnvVar{
 		{
@@ -315,16 +314,16 @@ func AddEnvVarForCluster() []corev1.EnvVar {
 			"true", //GetPropertyForCR("AMQ_CLUSTERED", cr, "true"),
 			nil,
 		},
-		{
-			"AMQ_CLUSTER_USER",
-			"",
-			clusterUserEnvVarSource,
-		},
-		{
-			"AMQ_CLUSTER_PASSWORD",
-			"",
-			clusterPasswordEnvVarSource,
-		},
+		//{
+		//	"AMQ_CLUSTER_USER",
+		//	"",
+		//	clusterUserEnvVarSource,
+		//},
+		//{
+		//	"AMQ_CLUSTER_PASSWORD",
+		//	"",
+		//	clusterPasswordEnvVarSource,
+		//},
 	}
 
 	return envVarArray

@@ -2,7 +2,6 @@ package v2alpha3activemqartemis
 
 import (
 	"context"
-	"github.com/RHsyseng/operator-utils/pkg/resource"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources"
 	ss "github.com/artemiscloud/activemq-artemis-operator/pkg/resources/statefulsets"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/fsm"
@@ -10,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strconv"
 )
 
 // This is the state we should be in whenever kubernetes
@@ -47,7 +47,7 @@ func (rs *ContainerRunningState) Enter(previousStateID int) error {
 
 	// Log where we are and what we're doing
 	reqLogger := log.WithValues("ActiveMQArtemis Name", rs.parentFSM.customResource.Name)
-	reqLogger.Info("Entering ContainerRunningState")
+	reqLogger.Info("Entering ContainerRunningState from " + strconv.Itoa(previousStateID))
 
 	// TODO: Clear up ambiguity in usage between container and pod
 	// Check to see how many pods are running atm
@@ -69,8 +69,8 @@ func (rs *ContainerRunningState) Update() (error, int) {
 		statefulSetUpdates: 0,
 	}
 
-	var allObjects []resource.KubernetesResource
-	err, allObjects = getServiceObjects(rs.parentFSM.customResource, rs.parentFSM.r.client, allObjects)
+	//var allObjects []resource.KubernetesResource
+	//err, allObjects = getServiceObjects(rs.parentFSM.customResource, rs.parentFSM.r.client, allObjects)
 	ssNamespacedName := types.NamespacedName{Name: ss.NameBuilder.Name(), Namespace: rs.parentFSM.customResource.Namespace}
 	currentStatefulSet := &appsv1.StatefulSet{}
 	err = rs.parentFSM.r.client.Get(context.TODO(), ssNamespacedName, currentStatefulSet)
@@ -88,9 +88,10 @@ func (rs *ContainerRunningState) Update() (error, int) {
 			nextStateID = ScalingID
 			break
 		}
-		allObjects = append(allObjects, currentStatefulSet)
+		//allObjects = append(allObjects, currentStatefulSet)
 
-		statefulSetUpdates, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, currentStatefulSet, firstTime, allObjects)
+		//statefulSetUpdates, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime, allObjects)
+		statefulSetUpdates, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime)
 		break
 	}
 
