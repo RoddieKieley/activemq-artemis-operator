@@ -7,6 +7,7 @@ import (
 	"github.com/RHsyseng/operator-utils/pkg/resource"
 	"github.com/RHsyseng/operator-utils/pkg/resource/compare"
 	"github.com/RHsyseng/operator-utils/pkg/resource/read"
+	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/serviceports"
 	"github.com/go-logr/logr"
 	//v2alpha1activemqartemisaddress "github.com/artemiscloud/activemq-artemis-operator/pkg/controller/broker/v2alpha1/activemqartemisaddress"
 	activemqartemisscaledown "github.com/artemiscloud/activemq-artemis-operator/pkg/controller/broker/v2alpha1/activemqartemisscaledown"
@@ -127,15 +128,11 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(customResource *
 		//stepsComplete |= CreatedStatefulSet
 	}
 
-	// Update the values in the currentStatefulSet from the incoming customResource
-	//*currentStatefulSet.Spec.Replicas = customResource.Spec.DeploymentPlan.Size
-
-
-	//headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
-	//labels := selectors.LabelBuilder.Labels()
-	//pingServiceDefinition := svc.NewPingServiceDefinitionForCR(ssNamespacedName, labels, labels)
-	//requestedResources = append(requestedResources, headlessServiceDefinition)
-	//requestedResources = append(requestedResources, pingServiceDefinition)
+	headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
+	labels := selectors.LabelBuilder.Labels()
+	pingServiceDefinition := svc.NewPingServiceDefinitionForCR(ssNamespacedName, labels, labels)
+	requestedResources = append(requestedResources, headlessServiceDefinition)
+	requestedResources = append(requestedResources, pingServiceDefinition)
 
 	return currentStatefulSet, firstTime
 }
