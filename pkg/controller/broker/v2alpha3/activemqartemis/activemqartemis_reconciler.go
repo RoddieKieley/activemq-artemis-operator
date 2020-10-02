@@ -165,9 +165,10 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 	if "" == adminUser {
 		if amqUserEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_USER"); nil != amqUserEnvVar {
 			adminUser = amqUserEnvVar.Value
-		} else {
-			adminUser = environments.Defaults.AMQ_USER
 		}
+	}
+	if "" == adminUser {
+		adminUser = environments.Defaults.AMQ_USER
 	}
 
 	envVarName2 := "AMQ_PASSWORD"
@@ -175,11 +176,11 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 	if "" == adminPassword {
 		if amqPasswordEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_PASSWORD"); nil != amqPasswordEnvVar {
 			adminPassword = amqPasswordEnvVar.Value
-		} else {
-			adminPassword = environments.Defaults.AMQ_PASSWORD
 		}
 	}
-
+	if "" == adminPassword {
+		adminPassword = environments.Defaults.AMQ_PASSWORD
+	}
 	envVars := make(map[string]string)
 	envVars[envVarName1] = adminUser
 	envVars[envVarName2] = adminPassword
