@@ -68,9 +68,6 @@ func (rs *ContainerRunningState) Update() (error, int) {
 	reconciler := ActiveMQArtemisReconciler{
 		statefulSetUpdates: 0,
 	}
-
-	//var allObjects []resource.KubernetesResource
-	//err, allObjects = getServiceObjects(rs.parentFSM.customResource, rs.parentFSM.r.client, allObjects)
 	ssNamespacedName := types.NamespacedName{Name: ss.NameBuilder.Name(), Namespace: rs.parentFSM.customResource.Namespace}
 	currentStatefulSet := &appsv1.StatefulSet{}
 	err = rs.parentFSM.r.client.Get(context.TODO(), ssNamespacedName, currentStatefulSet)
@@ -88,9 +85,7 @@ func (rs *ContainerRunningState) Update() (error, int) {
 			nextStateID = ScalingID
 			break
 		}
-		//allObjects = append(allObjects, currentStatefulSet)
 
-		//statefulSetUpdates, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime, allObjects)
 		statefulSetUpdates, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime)
 		break
 	}

@@ -45,7 +45,6 @@ func (ss *ScalingState) Enter(previousStateID int) error {
 
 	var err error = nil
 
-	//firstTime := false
 	currentStatefulSet := &appsv1.StatefulSet{}
 	err = ss.parentFSM.r.client.Get(context.TODO(), types.NamespacedName{Name: statefulsets.NameBuilder.Name(), Namespace: ss.parentFSM.customResource.Namespace}, currentStatefulSet)
 	for {
@@ -54,17 +53,6 @@ func (ss *ScalingState) Enter(previousStateID int) error {
 			err = nil
 			break
 		}
-
-		// Apply the size change we've detected
-
-		//_, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime, allObjects)
-		//if statefulSetUpdates > 0 {
-		//	if err := resources.Update(namespacedName, rs.parentFSM.r.client, currentStatefulSet); err != nil {
-		//		reqLogger.Error(err, "Failed to update StatefulSet.", "Deployment.Namespace", currentStatefulSet.Namespace, "Deployment.Name", currentStatefulSet.Name)
-		//		break
-		//	}
-		//}
-
 
 		// Take note, as this will change if a custom resource update is made. We want to requeue
 		// these for later when not scaling

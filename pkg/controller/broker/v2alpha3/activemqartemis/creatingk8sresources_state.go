@@ -2,8 +2,6 @@ package v2alpha3activemqartemis
 
 import (
 	"context"
-	//"github.com/RHsyseng/operator-utils/pkg/resource"
-
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/pods"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/secrets"
 
@@ -13,7 +11,6 @@ import (
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/fsm"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/selectors"
 	appsv1 "k8s.io/api/apps/v1"
-	//"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -83,70 +80,10 @@ func (rs *CreatingK8sResourcesState) enterFromInvalidState() error {
 	reqLogger.Info("CreateK8sResourceState enterFromInvalidstate" )
 
 	var err error = nil
-	//var requestedResources []resource.KubernetesResource
-	//stepsComplete := rs.stepsComplete
-	//firstTime := false
-	//var newStatefulsetDefinition *appsv1.StatefulSet = nil
 
 	rs.generateNames()
 	selectors.LabelBuilder.Base(rs.parentFSM.customResource.Name).Suffix("app").Generate()
-
-	//volumes.GLOBAL_DATA_PATH = environments.GetPropertyForCR("AMQ_DATA_DIR", rs.parentFSM.customResource, "/opt/"+rs.parentFSM.customResource.Name+"/data")
 	volumes.GLOBAL_DATA_PATH = "/opt/" + rs.parentFSM.customResource.Name + "/data"
-
-
-	//ssNamespacedName := types.NamespacedName{
-	//	Name:      ss.NameBuilder.Name(),
-	//	Namespace: rs.parentFSM.customResource.Namespace,
-	//}
-	//currentStatefulset, err := ss.RetrieveStatefulSet(ss.NameBuilder.Name(), ssNamespacedName, rs.parentFSM.r.client)
-	//if errors.IsNotFound(err) {
-	//	reqLogger.Info("Statefulset: " + ssNamespacedName.Name + " not found, will create")
-	//	currentStatefulset = NewStatefulSetForCR(rs.parentFSM.customResource)
-	//	firstTime = true
-	//} else {
-	//	reqLogger.Info("Statefulset: " + currentStatefulset.Name + " found")
-	//	stepsComplete |= CreatedStatefulSet
-	//}
-	//requestedResources = append(requestedResources, currentStatefulset)
-	//headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
-	//labels := selectors.LabelBuilder.Labels()
-	//pingServiceDefinition := svc.NewPingServiceDefinitionForCR(ssNamespacedName, labels, labels)
-	//requestedResources = append(requestedResources, headlessServiceDefinition)
-	//requestedResources = append(requestedResources, pingServiceDefinition)
-
-	//credentialsSecretName := secrets.CredentialsNameBuilder.Name()
-	//credentialsSecretNamespacedName := types.NamespacedName{
-	//	Name:      credentialsSecretName,
-	//	Namespace: rs.parentFSM.customResource.Namespace,
-	//}
-	//stringDataMap := map[string]string{}
-	//secretDefinition := secrets.NewSecret(credentialsSecretNamespacedName, credentialsSecretName, stringDataMap)
-	//if err = resources.Retrieve(credentialsSecretNamespacedName, rs.parentFSM.r.client, secretDefinition); err != nil {
-	//	if errors.IsNotFound(err) {
-	//		reqLogger.Info("Secret: " + credentialsSecretNamespacedName.Name + " not found, will create")
-	//		credentialsSecretDefinition := rs.newCredentialsSecretDefinition()
-	//		requestedResources = append(requestedResources, credentialsSecretDefinition)
-	//	} else {
-	//		// secret exists, retrive existing cluster information for the global hack
-	//		reqLogger.Info("Secret: " + secretDefinition.Name + " found, retrieving cluster details")
-	//		clusterUser := secretDefinition.StringData["AMQ_CLUSTER_USER"]
-	//		clusterPassword := secretDefinition.StringData["AMQ_CLUSTER_PASSWORD"]
-	//
-	//		// TODO: Remove this hack
-	//		environments.GLOBAL_AMQ_CLUSTER_USER = clusterUser
-	//		environments.GLOBAL_AMQ_CLUSTER_PASSWORD = clusterPassword
-	//	}
-	//}
-
-	//if firstTime {
-	//_, stepsComplete = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, currentStatefulset, firstTime, requestedResources)
-	//_, stepsComplete = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime, requestedResources)
-	//} else {
-	//
-	//}
-
-	//rs.stepsComplete = stepsComplete
 
 	return err
 }
@@ -157,7 +94,6 @@ func (rs *CreatingK8sResourcesState) Enter(previousStateID int) error {
 	reqLogger := log.WithValues("ActiveMQArtemis Name", rs.parentFSM.customResource.Name)
 	reqLogger.Info("Entering CreatingK8sResourcesState from " + strconv.Itoa(previousStateID))
 
-	//var requestedResources []resource.KubernetesResource
 	var stepsComplete uint8 = 0
 	firstTime := false
 
@@ -170,7 +106,6 @@ func (rs *CreatingK8sResourcesState) Enter(previousStateID int) error {
 		// No brokers running; safe to touch journals etc...
 	}
 
-	//_, stepsComplete = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime, requestedResources)
 	_, stepsComplete = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime)
 	rs.stepsComplete = stepsComplete
 
@@ -185,18 +120,9 @@ func (rs *CreatingK8sResourcesState) Update() (error, int) {
 
 	var err error = nil
 	var nextStateID int = CreatingK8sResourcesID
-	//var statefulSetUpdates uint32 = 0
-
-
-	// NOTE: By all service objects here we mean headless and ping service objects
-	//err, allObjects = getServiceObjects(rs.parentFSM.customResource, rs.parentFSM.r.client, allObjects)
 
 	currentStatefulSet := &appsv1.StatefulSet{}
 	ssNamespacedName := types.NamespacedName{Name: ss.NameBuilder.Name(), Namespace: rs.parentFSM.customResource.Namespace}
-	//namespacedName := types.NamespacedName{
-	//	Name:      rs.parentFSM.customResource.Name,
-	//	Namespace: rs.parentFSM.customResource.Namespace,
-	//}
 	err = rs.parentFSM.r.client.Get(context.TODO(), ssNamespacedName, currentStatefulSet)
 	for {
 		if err != nil && errors.IsNotFound(err) {
@@ -208,24 +134,10 @@ func (rs *CreatingK8sResourcesState) Update() (error, int) {
 		}
 
 		// Do we need to check for and bounce an observed generation change here?
-		//if (rs.stepsComplete&CreatedStatefulSet > 0) &&
-		//	(rs.stepsComplete&CreatedHeadlessService) > 0 &&
-		//	(rs.stepsComplete&CreatedPingService > 0) {
 		if (rs.stepsComplete&CreatedStatefulSet > 0) { //&&
-			//(rs.stepsComplete&CreatedHeadlessService) > 0 &&
-			//(rs.stepsComplete&CreatedPingService > 0) {
 			firstTime := false
 
-			//allObjects = append(allObjects, currentStatefulSet)
-			//statefulSetUpdates, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, currentStatefulSet, firstTime, allObjects)
-			//_, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime, allObjects)
 			_, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime)
-			//if statefulSetUpdates > 0 {
-			//	if err := resources.Update(namespacedName, rs.parentFSM.r.client, currentStatefulSet); err != nil {
-			//		reqLogger.Error(err, "Failed to update StatefulSet.", "Deployment.Namespace", currentStatefulSet.Namespace, "Deployment.Name", currentStatefulSet.Name)
-			//		break
-			//	}
-			//}
 			if rs.parentFSM.customResource.Spec.DeploymentPlan.Size != currentStatefulSet.Status.ReadyReplicas {
 				if rs.parentFSM.customResource.Spec.DeploymentPlan.Size > 0 {
 					nextStateID = ScalingID
