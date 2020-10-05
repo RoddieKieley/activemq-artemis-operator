@@ -12,6 +12,13 @@ spec:
     persistenceEnabled: false
     journalType: nio
     messageMigration: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1024m
+      requests:
+        cpu: 250m
+        memory: 512m
   console:
     expose: true
   acceptors:
