@@ -484,8 +484,11 @@ func generateAcceptorsString(customResource *brokerv2alpha3.ActiveMQArtemis, cli
 		if acceptor.ConnectionsAllowed > 0 {
 			acceptorEntry = acceptorEntry + ";" + "connectionsAllowed=" + fmt.Sprintf("%d", acceptor.ConnectionsAllowed)
 		}
+		if acceptor.AMQPMinLargeMessageSize > 0 {
+			acceptorEntry = acceptorEntry + ";" + "amqpMinLargeMessageSize=" + fmt.Sprintf("%d", acceptor.AMQPMinLargeMessageSize)
+		}
 		acceptorEntry = acceptorEntry + ";" + defaultArgs
-		// TODO: SSL
+
 		acceptorEntry = acceptorEntry + "<\\/acceptor>"
 	}
 	// TODO: Evaluate more dynamic messageMigration
