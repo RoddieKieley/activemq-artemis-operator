@@ -99,13 +99,13 @@ type AddressSettingType struct {
 }
 
 type DeploymentPlanType struct {
-	Image              string `json:"image,omitempty"`
-	Size               int32  `json:"size,omitempty"`
-	RequireLogin       bool   `json:"requireLogin,omitempty"`
-	PersistenceEnabled bool   `json:"persistenceEnabled,omitempty"`
-	JournalType        string `json:"journalType,omitempty"`
-	MessageMigration   *bool  `json:"messageMigration,omitempty"`
-	Resources    	   corev1.ResourceRequirements `json:"resources,omitempty"`
+	Image              string                      `json:"image,omitempty"`
+	Size               int32                       `json:"size,omitempty"`
+	RequireLogin       bool                        `json:"requireLogin,omitempty"`
+	PersistenceEnabled bool                        `json:"persistenceEnabled,omitempty"`
+	JournalType        string                      `json:"journalType,omitempty"`
+	MessageMigration   *bool                       `json:"messageMigration,omitempty"`
+	Resources          corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 type AcceptorType struct {
