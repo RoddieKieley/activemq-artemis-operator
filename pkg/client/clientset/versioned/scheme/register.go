@@ -17,7 +17,7 @@ limitations under the License.
 package scheme
 
 import (
-        "github.com/artemiscloud/activemq-artemis-operator/pkg/apis"
+	"github.com/artemiscloud/activemq-artemis-operator/pkg/apis"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -26,10 +26,10 @@ var GLOBAL_AMQ_CLUSTER_USER string = ""
 var GLOBAL_AMQ_CLUSTER_PASSWORD string = ""
 
 type defaults struct {
-	AMQ_USER     			string
-	AMQ_PASSWORD 			string
-	AMQ_CLUSTER_USER 		string
-	AMQ_CLUSTER_PASSWORD	string
+	AMQ_USER             string
+	AMQ_PASSWORD         string
+	AMQ_CLUSTER_USER     string
+	AMQ_CLUSTER_PASSWORD string
 }
 
 var Defaults defaults

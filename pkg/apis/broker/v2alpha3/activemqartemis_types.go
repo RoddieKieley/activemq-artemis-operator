@@ -23,8 +23,8 @@ type ActiveMQArtemisSpec struct {
 	Console        ConsoleType             `json:"console,omitempty"`
 	Version        string                  `json:"version,omitempty"`
 	Upgrades       ActiveMQArtemisUpgrades `json:"upgrades,omitempty"`
-    //below are v2alpha3 types
-    AddressSettings AddressSettingsType    `json:"addressSettings,omitempty"`
+	//below are v2alpha3 types
+	AddressSettings AddressSettingsType `json:"addressSettings,omitempty"`
 }
 
 type AddressSettingsType struct {
@@ -33,68 +33,68 @@ type AddressSettingsType struct {
 }
 
 type AddressSettingType struct {
-	DeadLetterAddress                   *string `json:"deadLetterAddress,omitempty"`
-	AutoCreateDeadLetterResources       *bool   `json:"autoCreateDeadLetterResources,omitempty"`
-	DeadLetterQueuePrefix               *string `json:"deadLetterQueuePrefix,omitempty"`
-	DeadLetterQueueSuffix               *string `json:"deadLetterQueueSuffix,omitempty"`
-	ExpiryAddress                       *string `json:"expiryAddress,omitempty"`
-	AutoCreateExpiryResources           *bool   `json:"autoCreateExpiryResources,omitempty"`
-	ExpiryQueuePrefix                   *string `json:"expiryQueuePrefix,omitempty"`
-	ExpiryQueueSuffix                   *string `json:"expiryQueueSuffix,omitempty"`
-	ExpiryDelay                         *int32  `json:"expiryDelay,omitempty"`
-	MinExpiryDelay                      *int32  `json:"minExpiryDelay,omitempty"`
-	MaxExpiryDelay                      *int32  `json:"maxExpiryDelay,omitempty"`
-	RedeliveryDelay                     *int32  `json:"redeliveryDelay,omitempty"`
-	RedeliveryDelayMultiplier           *int32  `json:"redeliveryDelayMultiplier,omitempty"`
-	RedeliveryCollisionAvoidanceFactor  *int32  `json:"redeliveryCollisionAvoidanceFactor,omitempty"`
-	MaxRedeliveryDelay                  *int32  `json:"maxRedeliveryDelay,omitempty"`
-	MaxDeliveryAttempts                 *int32  `json:"maxDeliveryAttempts,omitempty"`
-	MaxSizeBytes                        *string  `json:"maxSizeBytes,omitempty"`
-	MaxSizeBytesRejectThreshold         *int32  `json:"maxSizeBytesRejectThreshold,omitempty"`
-	PageSizeBytes                       *string `json:"pageSizeBytes,omitempty"`
-	PageMaxCacheSize                    *int32  `json:"pageMaxCacheSize,omitempty"`
-	AddressFullPolicy                   *string `json:"addressFullPolicy,omitempty"`
-	MessageCounterHistoryDayLimit       *int32  `json:"messageCounterHistoryDayLimit,omitempty"`
-	LastValueQueue                      *bool   `json:"lastValueQueue,omitempty"`
-	DefaultLastValueQueue               *bool   `json:"defaultLastValueQueue,omitempty"`
-	DefaultLastValueKey                 *string `json:"defaultLastValueKey,omitempty"`
-	DefaultNonDestructive               *bool   `json:"defaultNonDestructive,omitempty"`
-	DefaultExclusiveQueue               *bool   `json:"defaultExclusiveQueue,omitempty"`
-	DefaultGroupRebalance               *bool   `json:"defaultGroupRebalance,omitempty"`
-	DefaultGroupRebalancePauseDispatch  *bool   `json:"defaultGroupRebalancePauseDispatch,omitempty"`
-	DefaultGroupBuckets                 *int32  `json:"defaultGroupBuckets,omitempty"`
-	DefaultGroupFirstKey                *string `json:"defaultGroupFirstKey,omitempty"`
-	DefaultConsumersBeforeDispatch      *int32  `json:"defaultConsumersBeforeDispatch,omitempty"`
-	DefaultDelayBeforeDispatch          *int32  `json:"defaultDelayBeforeDispatch,omitempty"`
-	RedistributionDelay                 *int32  `json:"redistributionDelay,omitempty"`
-	SendToDlaOnNoRoute                  *bool   `json:"sendToDlaOnNoRoute,omitempty"`
-	SlowConsumerThreshold               *int32  `json:"slowConsumerThreshold,omitempty"`
-	SlowConsumerPolicy                  *string `json:"slowConsumerPolicy,omitempty"`
-	SlowConsumerCheckPeriod             *int32  `json:"slowConsumerCheckPeriod,omitempty"`
-	AutoCreateJmsQueues                 *bool   `json:"autoCreateJmsQueues,omitempty"`
-	AutoDeleteJmsQueues                 *bool   `json:"autoDeleteJmsQueues,omitempty"`
-	AutoCreateJmsTopics                 *bool   `json:"autoCreateJmsTopics,omitempty"`
-	AutoDeleteJmsTopics                 *bool   `json:"autoDeleteJmsTopics,omitempty"`
-	AutoCreateQueues                    *bool   `json:"autoCreateQueues,omitempty"`
-	AutoDeleteQueues                    *bool   `json:"autoDeleteQueues,omitempty"`
-	AutoDeleteCreatedQueues             *bool   `json:"autoDeleteCreatedQueues,omitempty"`
-	AutoDeleteQueuesDelay               *int32  `json:"autoDeleteQueuesDelay,omitempty"`
-	AutoDeleteQueuesMessageCount        *int32  `json:"autoDeleteQueuesMessageCount,omitempty"`
-	ConfigDeleteQueues                  *string `json:"configDeleteQueues,omitempty"`
-	AutoCreateAddresses                 *bool   `json:"autoCreateAddresses,omitempty"`
-	AutoDeleteAddresses                 *bool   `json:"autoDeleteAddresses,omitempty"`
-	AutoDeleteAddressesDelay            *int32  `json:"autoDeleteAddressesDelay,omitempty"`
-	ConfigDeleteAddresses               *string `json:"configDeleteAddresses,omitempty"`
-	ManagementBrowsePageSize            *int32  `json:"managementBrowsePageSize,omitempty"`
-	DefaultPurgeOnNoConsumers           *bool   `json:"defaultPurgeOnNoConsumers,omitempty"`
-	DefaultMaxConsumers                 *int32  `json:"defaultMaxConsumers,omitempty"`
-	DefaultQueueRoutingType             *string `json:"defaultQueueRoutingType,omitempty"`
-	DefaultAddressRoutingType           *string `json:"defaultAddressRoutingType,omitempty"`
-	DefaultConsumerWindowSize           *int32  `json:"defaultConsumerWindowSize,omitempty"`
-	DefaultRingSize                     *int32  `json:"defaultRingSize,omitempty"`
-	RetroactiveMessageCount             *int32  `json:"retroactiveMessageCount,omitempty"`
-	EnableMetrics                       *bool   `json:"enableMetrics,omitempty"`
-	Match                               string `json:"match,omitempty"`
+	DeadLetterAddress                  *string `json:"deadLetterAddress,omitempty"`
+	AutoCreateDeadLetterResources      *bool   `json:"autoCreateDeadLetterResources,omitempty"`
+	DeadLetterQueuePrefix              *string `json:"deadLetterQueuePrefix,omitempty"`
+	DeadLetterQueueSuffix              *string `json:"deadLetterQueueSuffix,omitempty"`
+	ExpiryAddress                      *string `json:"expiryAddress,omitempty"`
+	AutoCreateExpiryResources          *bool   `json:"autoCreateExpiryResources,omitempty"`
+	ExpiryQueuePrefix                  *string `json:"expiryQueuePrefix,omitempty"`
+	ExpiryQueueSuffix                  *string `json:"expiryQueueSuffix,omitempty"`
+	ExpiryDelay                        *int32  `json:"expiryDelay,omitempty"`
+	MinExpiryDelay                     *int32  `json:"minExpiryDelay,omitempty"`
+	MaxExpiryDelay                     *int32  `json:"maxExpiryDelay,omitempty"`
+	RedeliveryDelay                    *int32  `json:"redeliveryDelay,omitempty"`
+	RedeliveryDelayMultiplier          *int32  `json:"redeliveryDelayMultiplier,omitempty"`
+	RedeliveryCollisionAvoidanceFactor *int32  `json:"redeliveryCollisionAvoidanceFactor,omitempty"`
+	MaxRedeliveryDelay                 *int32  `json:"maxRedeliveryDelay,omitempty"`
+	MaxDeliveryAttempts                *int32  `json:"maxDeliveryAttempts,omitempty"`
+	MaxSizeBytes                       *string `json:"maxSizeBytes,omitempty"`
+	MaxSizeBytesRejectThreshold        *int32  `json:"maxSizeBytesRejectThreshold,omitempty"`
+	PageSizeBytes                      *string `json:"pageSizeBytes,omitempty"`
+	PageMaxCacheSize                   *int32  `json:"pageMaxCacheSize,omitempty"`
+	AddressFullPolicy                  *string `json:"addressFullPolicy,omitempty"`
+	MessageCounterHistoryDayLimit      *int32  `json:"messageCounterHistoryDayLimit,omitempty"`
+	LastValueQueue                     *bool   `json:"lastValueQueue,omitempty"`
+	DefaultLastValueQueue              *bool   `json:"defaultLastValueQueue,omitempty"`
+	DefaultLastValueKey                *string `json:"defaultLastValueKey,omitempty"`
+	DefaultNonDestructive              *bool   `json:"defaultNonDestructive,omitempty"`
+	DefaultExclusiveQueue              *bool   `json:"defaultExclusiveQueue,omitempty"`
+	DefaultGroupRebalance              *bool   `json:"defaultGroupRebalance,omitempty"`
+	DefaultGroupRebalancePauseDispatch *bool   `json:"defaultGroupRebalancePauseDispatch,omitempty"`
+	DefaultGroupBuckets                *int32  `json:"defaultGroupBuckets,omitempty"`
+	DefaultGroupFirstKey               *string `json:"defaultGroupFirstKey,omitempty"`
+	DefaultConsumersBeforeDispatch     *int32  `json:"defaultConsumersBeforeDispatch,omitempty"`
+	DefaultDelayBeforeDispatch         *int32  `json:"defaultDelayBeforeDispatch,omitempty"`
+	RedistributionDelay                *int32  `json:"redistributionDelay,omitempty"`
+	SendToDlaOnNoRoute                 *bool   `json:"sendToDlaOnNoRoute,omitempty"`
+	SlowConsumerThreshold              *int32  `json:"slowConsumerThreshold,omitempty"`
+	SlowConsumerPolicy                 *string `json:"slowConsumerPolicy,omitempty"`
+	SlowConsumerCheckPeriod            *int32  `json:"slowConsumerCheckPeriod,omitempty"`
+	AutoCreateJmsQueues                *bool   `json:"autoCreateJmsQueues,omitempty"`
+	AutoDeleteJmsQueues                *bool   `json:"autoDeleteJmsQueues,omitempty"`
+	AutoCreateJmsTopics                *bool   `json:"autoCreateJmsTopics,omitempty"`
+	AutoDeleteJmsTopics                *bool   `json:"autoDeleteJmsTopics,omitempty"`
+	AutoCreateQueues                   *bool   `json:"autoCreateQueues,omitempty"`
+	AutoDeleteQueues                   *bool   `json:"autoDeleteQueues,omitempty"`
+	AutoDeleteCreatedQueues            *bool   `json:"autoDeleteCreatedQueues,omitempty"`
+	AutoDeleteQueuesDelay              *int32  `json:"autoDeleteQueuesDelay,omitempty"`
+	AutoDeleteQueuesMessageCount       *int32  `json:"autoDeleteQueuesMessageCount,omitempty"`
+	ConfigDeleteQueues                 *string `json:"configDeleteQueues,omitempty"`
+	AutoCreateAddresses                *bool   `json:"autoCreateAddresses,omitempty"`
+	AutoDeleteAddresses                *bool   `json:"autoDeleteAddresses,omitempty"`
+	AutoDeleteAddressesDelay           *int32  `json:"autoDeleteAddressesDelay,omitempty"`
+	ConfigDeleteAddresses              *string `json:"configDeleteAddresses,omitempty"`
+	ManagementBrowsePageSize           *int32  `json:"managementBrowsePageSize,omitempty"`
+	DefaultPurgeOnNoConsumers          *bool   `json:"defaultPurgeOnNoConsumers,omitempty"`
+	DefaultMaxConsumers                *int32  `json:"defaultMaxConsumers,omitempty"`
+	DefaultQueueRoutingType            *string `json:"defaultQueueRoutingType,omitempty"`
+	DefaultAddressRoutingType          *string `json:"defaultAddressRoutingType,omitempty"`
+	DefaultConsumerWindowSize          *int32  `json:"defaultConsumerWindowSize,omitempty"`
+	DefaultRingSize                    *int32  `json:"defaultRingSize,omitempty"`
+	RetroactiveMessageCount            *int32  `json:"retroactiveMessageCount,omitempty"`
+	EnableMetrics                      *bool   `json:"enableMetrics,omitempty"`
+	Match                              string  `json:"match,omitempty"`
 }
 
 type DeploymentPlanType struct {
@@ -126,27 +126,27 @@ type AcceptorType struct {
 }
 
 type ConnectorType struct {
-       Name                string `json:"name"`
-       Type                string `json:"type,omitempty"`
-       Host                string `json:"host"`
-       Port                int32  `json:"port"`
-       SSLEnabled          bool   `json:"sslEnabled,omitempty"`
-       SSLSecret           string `json:"sslSecret,omitempty"`
-       EnabledCipherSuites string `json:"enabledCipherSuites,omitempty"`
-       EnabledProtocols    string `json:"enabledProtocols,omitempty"`
-       NeedClientAuth      bool   `json:"needClientAuth,omitempty"`
-       WantClientAuth      bool   `json:"wantClientAuth,omitempty"`
-       VerifyHost          bool   `json:"verifyHost,omitempty"`
-       SSLProvider         string `json:"sslProvider,omitempty"`
-       SNIHost             string `json:"sniHost,omitempty"`
-       Expose              bool   `json:"expose,omitempty"`
+	Name                string `json:"name"`
+	Type                string `json:"type,omitempty"`
+	Host                string `json:"host"`
+	Port                int32  `json:"port"`
+	SSLEnabled          bool   `json:"sslEnabled,omitempty"`
+	SSLSecret           string `json:"sslSecret,omitempty"`
+	EnabledCipherSuites string `json:"enabledCipherSuites,omitempty"`
+	EnabledProtocols    string `json:"enabledProtocols,omitempty"`
+	NeedClientAuth      bool   `json:"needClientAuth,omitempty"`
+	WantClientAuth      bool   `json:"wantClientAuth,omitempty"`
+	VerifyHost          bool   `json:"verifyHost,omitempty"`
+	SSLProvider         string `json:"sslProvider,omitempty"`
+	SNIHost             string `json:"sniHost,omitempty"`
+	Expose              bool   `json:"expose,omitempty"`
 }
 
 type ConsoleType struct {
-       Expose        bool   `json:"expose,omitempty"`
-       SSLEnabled    bool   `json:"sslEnabled,omitempty"`
-       SSLSecret     string `json:"sslSecret,omitempty"`
-       UseClientAuth bool   `json:"useClientAuth,omitempty"`
+	Expose        bool   `json:"expose,omitempty"`
+	SSLEnabled    bool   `json:"sslEnabled,omitempty"`
+	SSLSecret     string `json:"sslSecret,omitempty"`
+	UseClientAuth bool   `json:"useClientAuth,omitempty"`
 }
 
 // ActiveMQArtemis App product upgrade flags

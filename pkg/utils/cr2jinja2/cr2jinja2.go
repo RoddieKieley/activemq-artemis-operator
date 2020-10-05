@@ -3,10 +3,10 @@ package cr2jinja2
 import (
 	brokerv2alpha3 "github.com/artemiscloud/activemq-artemis-operator/pkg/apis/broker/v2alpha3"
 	//k8syaml "k8s.io/apimachinery/pkg/util/yaml"
-	"strings"
-	"strconv"
 	"fmt"
 	"io/ioutil"
+	"strconv"
+	"strings"
 )
 
 func checkString(prop *string) *string {
@@ -45,9 +45,9 @@ func MakeBrokerCfgOverrides(customeResource *brokerv2alpha3.ActiveMQArtemis, env
 
 	var addressSettings *[]brokerv2alpha3.AddressSettingType = &customeResource.Spec.AddressSettings.AddressSetting
 	var sb strings.Builder
-	
-	processAddressSettings(&sb, addressSettings);
-	
+
+	processAddressSettings(&sb, addressSettings)
+
 	if envVar != nil && *envVar != "" {
 		fmt.Println("envvar: " + (*envVar))
 	}
@@ -66,28 +66,28 @@ func MakeBrokerCfgOverrides(customeResource *brokerv2alpha3.ActiveMQArtemis, env
 }
 
 func processAddressSettings(sb *strings.Builder, addressSettings *[]brokerv2alpha3.AddressSettingType) {
-	
+
 	if addressSettings == nil || len(*addressSettings) == 0 {
 		return
 	}
 	sb.WriteString("user_address_settings:\n")
 	for _, s := range *addressSettings {
 		matchValue := s.Match
-		if (s.Match == "#") {
+		if s.Match == "#" {
 			matchValue = "'#'"
 		}
 		sb.WriteString("- match: " + matchValue + "\n")
 		if value := checkString(s.DeadLetterAddress); value != nil {
-			sb.WriteString("  dead_letter_address: " + *value + "\n")			
+			sb.WriteString("  dead_letter_address: " + *value + "\n")
 		}
 		if value := checkBool(s.AutoCreateDeadLetterResources); value != nil {
-			sb.WriteString("  auto_create_dead_letter_resources: " + *value + "\n")			
+			sb.WriteString("  auto_create_dead_letter_resources: " + *value + "\n")
 		}
 		if value := checkString(s.DeadLetterQueuePrefix); value != nil {
-			sb.WriteString("  dead_letter_queue_prefix: " + *value + "\n")			
+			sb.WriteString("  dead_letter_queue_prefix: " + *value + "\n")
 		}
 		if value := checkString(s.DeadLetterQueueSuffix); value != nil {
-			sb.WriteString("  dead_letter_queue_suffix: " + *value + "\n")	
+			sb.WriteString("  dead_letter_queue_suffix: " + *value + "\n")
 		}
 		if value := checkString(s.ExpiryAddress); value != nil {
 			sb.WriteString("  expiry_address: " + *value + "\n")

@@ -70,14 +70,12 @@ func (rs *CreatingK8sResourcesState) generateNames() {
 	secrets.NettyNameBuilder.Prefix(rs.parentFSM.customResource.Name).Base("netty").Suffix("secret").Generate()
 }
 
-
-
 // First time entering state
 func (rs *CreatingK8sResourcesState) enterFromInvalidState() error {
 
 	// Log where we are and what we're doing
 	reqLogger := log.WithValues("ActiveMQArtemis Name", rs.parentFSM.customResource.Name)
-	reqLogger.Info("CreateK8sResourceState enterFromInvalidstate" )
+	reqLogger.Info("CreateK8sResourceState enterFromInvalidstate")
 
 	var err error = nil
 
@@ -134,7 +132,7 @@ func (rs *CreatingK8sResourcesState) Update() (error, int) {
 		}
 
 		// Do we need to check for and bounce an observed generation change here?
-		if (rs.stepsComplete&CreatedStatefulSet > 0) { //&&
+		if rs.stepsComplete&CreatedStatefulSet > 0 { //&&
 			firstTime := false
 
 			_, _ = reconciler.Process(rs.parentFSM.customResource, rs.parentFSM.r.client, rs.parentFSM.r.scheme, firstTime)

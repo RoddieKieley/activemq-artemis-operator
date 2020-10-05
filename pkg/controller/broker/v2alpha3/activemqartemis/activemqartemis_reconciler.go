@@ -7,8 +7,6 @@ import (
 	"github.com/RHsyseng/operator-utils/pkg/resource"
 	"github.com/RHsyseng/operator-utils/pkg/resource/compare"
 	"github.com/RHsyseng/operator-utils/pkg/resource/read"
-	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/serviceports"
-	"github.com/go-logr/logr"
 	activemqartemisscaledown "github.com/artemiscloud/activemq-artemis-operator/pkg/controller/broker/v2alpha1/activemqartemisscaledown"
 	v2alpha2activemqartemisaddress "github.com/artemiscloud/activemq-artemis-operator/pkg/controller/broker/v2alpha2/activemqartemisaddress"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources"
@@ -18,10 +16,12 @@ import (
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/pods"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/routes"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/secrets"
+	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/serviceports"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/statefulsets"
 	ss "github.com/artemiscloud/activemq-artemis-operator/pkg/resources/statefulsets"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/cr2jinja2"
 	"github.com/artemiscloud/activemq-artemis-operator/version"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,6 +69,7 @@ const (
 var defaultMessageMigration bool = true
 var requestedResources []resource.KubernetesResource
 var lastStatus olm.DeploymentStatus
+
 //default ApplyRule for address-settings
 var defApplyRule string = "merge_all"
 
@@ -85,7 +86,6 @@ type ActiveMQArtemisIReconciler interface {
 	ProcessConsole(customResource *brokerv2alpha3.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, currentStatefulSet *appsv1.StatefulSet)
 	ProcessResources(customResource *brokerv2alpha3.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, currentStatefulSet *appsv1.StatefulSet) uint8
 }
-
 
 func (reconciler *ActiveMQArtemisReconciler) Process(customResource *brokerv2alpha3.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, firstTime bool) (uint32, uint8) {
 
@@ -218,8 +218,8 @@ func (reconciler *ActiveMQArtemisReconciler) newCredentialsSecretDefinition(cust
 	stringDataMap := map[string]string{
 		"AMQ_CLUSTER_USER":     clusterUser,
 		"AMQ_CLUSTER_PASSWORD": clusterPassword,
-		"AMQ_USER":        adminUser,
-		"AMQ_PASSWORD":    adminPassword,
+		"AMQ_USER":             adminUser,
+		"AMQ_PASSWORD":         adminPassword,
 	}
 	secretDefinition := secrets.NewSecret(namespacedName, namespacedName.Name, stringDataMap)
 
@@ -1412,34 +1412,34 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha3.ActiveMQArtemis) cor
 		reqLogger.Info("Process addresssetting", "ApplyRule", *envVarApplyRuleValue)
 
 		brokerYaml := cr2jinja2.MakeBrokerCfgOverrides(customResource, nil, nil)
-		InitContainers := []corev1.Container {
+		InitContainers := []corev1.Container{
 			{
-				Name:	"activemq-artemis-init",
-				Image:	"quay.io/artemiscloud/activemq-artemis-broker-init:0.1.0",
+				Name:            "activemq-artemis-init",
+				Image:           "quay.io/artemiscloud/activemq-artemis-broker-init:0.1.0",
 				ImagePullPolicy: "Always",
-				Command:	[]string{"/bin/bash"},
-				Args:		[]string{"-c",
+				Command:         []string{"/bin/bash"},
+				Args: []string{"-c",
 					"echo \"" + brokerYaml + "\" > " + outputDir +
-					"/broker.yaml; cat /yacfg_etc/broker.yaml; yacfg --profile artemis/2.15.0/default_with_user_address_settings.yaml.jinja2  --tune " +
-					outputDir + "/broker.yaml --output " + outputDir},
+						"/broker.yaml; cat /yacfg_etc/broker.yaml; yacfg --profile artemis/2.15.0/default_with_user_address_settings.yaml.jinja2  --tune " +
+						outputDir + "/broker.yaml --output " + outputDir},
 			},
 		}
 
 		Spec.InitContainers = InitContainers
 		//create a volumeMount for both init-container and main container
 		volumeMountForCfg := volumes.MakeVolumeMountForCfg("tool-dir", outputDir)
-		Spec.Containers[0].VolumeMounts = append(Spec.Containers[0].VolumeMounts, volumeMountForCfg);
+		Spec.Containers[0].VolumeMounts = append(Spec.Containers[0].VolumeMounts, volumeMountForCfg)
 		InitContainers[0].VolumeMounts = append(InitContainers[0].VolumeMounts, volumeMountForCfg)
 
 		//pass cfg file location and apply rule to main container via env vars
-		tuneFile := corev1.EnvVar {
-			Name: envVarTuneFilePath,
+		tuneFile := corev1.EnvVar{
+			Name:  envVarTuneFilePath,
 			Value: outputDir,
 		}
 		environments.Create(Spec.Containers, &tuneFile)
 
-		applyRule := corev1.EnvVar {
-			Name: envVarApplyRule,
+		applyRule := corev1.EnvVar{
+			Name:  envVarApplyRule,
 			Value: *envVarApplyRuleValue,
 		}
 		environments.Create(Spec.Containers, &applyRule)

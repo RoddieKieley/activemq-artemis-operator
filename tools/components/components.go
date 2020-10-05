@@ -189,7 +189,7 @@ func GetRole(operatorName string) *rbacv1.Role {
 					"routes/custom-host",
 					"routes/status",
 				},
-				Verbs: []string{"get", "list", "watch", "create", "delete","update"},
+				Verbs: []string{"get", "list", "watch", "create", "delete", "update"},
 			},
 			{
 				APIGroups: []string{
@@ -209,7 +209,6 @@ func GetRole(operatorName string) *rbacv1.Role {
 				},
 				Verbs: []string{"update"},
 			},
-
 		},
 	}
 	return role

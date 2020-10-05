@@ -14,7 +14,7 @@ require (
 	github.com/evanphx/json-patch v4.5.0+incompatible // indirect
 	github.com/fgiorgetti/qpid-dispatch-go-tests v0.0.0-20190923194420-c3f992ce0eee
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.1.0 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/go-openapi/analysis v0.19.0 // indirect
 	github.com/go-openapi/errors v0.19.0 // indirect
