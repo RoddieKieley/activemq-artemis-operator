@@ -516,6 +516,23 @@ spec:
                       type: integer
                       maximum: 16
                       minimum: 0
+                    resources:
+                      type: object
+                      properties:
+                        requests:
+                          type: object
+                          properties:
+                            cpu:
+                              type: string
+                            memory:
+                              type: string
+                        limits:
+                          type: object
+                          properties:
+                            cpu:
+                              type: string
+                            memory:
+                              type: string
                 upgrades:
                   description: >-
                     Specify the level of upgrade that should be allowed when an
