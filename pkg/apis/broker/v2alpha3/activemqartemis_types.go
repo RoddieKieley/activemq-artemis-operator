@@ -107,23 +107,23 @@ type DeploymentPlanType struct {
 }
 
 type AcceptorType struct {
-	Name                string `json:"name"`
-	Port                int32  `json:"port,omitempty"`
-	Protocols           string `json:"protocols,omitempty"`
-	SSLEnabled          bool   `json:"sslEnabled,omitempty"`
-	SSLSecret           string `json:"sslSecret,omitempty"`
-	EnabledCipherSuites string `json:"enabledCipherSuites,omitempty"`
-	EnabledProtocols    string `json:"enabledProtocols,omitempty"`
-	NeedClientAuth      bool   `json:"needClientAuth,omitempty"`
-	WantClientAuth      bool   `json:"wantClientAuth,omitempty"`
-	VerifyHost          bool   `json:"verifyHost,omitempty"`
-	SSLProvider         string `json:"sslProvider,omitempty"`
-	SNIHost             string `json:"sniHost,omitempty"`
-	Expose              bool   `json:"expose,omitempty"`
-	AnycastPrefix       string `json:"anycastPrefix,omitempty"`
-	MulticastPrefix     string `json:"multicastPrefix,omitempty"`
-	ConnectionsAllowed  int    `json:"connectionsAllowed,omitempty"`
-	AMQPMinLargeMessageSize int `json:"amqpMinLargeMessageSize,omitempty"`
+	Name                    string `json:"name"`
+	Port                    int32  `json:"port,omitempty"`
+	Protocols               string `json:"protocols,omitempty"`
+	SSLEnabled              bool   `json:"sslEnabled,omitempty"`
+	SSLSecret               string `json:"sslSecret,omitempty"`
+	EnabledCipherSuites     string `json:"enabledCipherSuites,omitempty"`
+	EnabledProtocols        string `json:"enabledProtocols,omitempty"`
+	NeedClientAuth          bool   `json:"needClientAuth,omitempty"`
+	WantClientAuth          bool   `json:"wantClientAuth,omitempty"`
+	VerifyHost              bool   `json:"verifyHost,omitempty"`
+	SSLProvider             string `json:"sslProvider,omitempty"`
+	SNIHost                 string `json:"sniHost,omitempty"`
+	Expose                  bool   `json:"expose,omitempty"`
+	AnycastPrefix           string `json:"anycastPrefix,omitempty"`
+	MulticastPrefix         string `json:"multicastPrefix,omitempty"`
+	ConnectionsAllowed      int    `json:"connectionsAllowed,omitempty"`
+	AMQPMinLargeMessageSize int    `json:"amqpMinLargeMessageSize,omitempty"`
 }
 
 type ConnectorType struct {
