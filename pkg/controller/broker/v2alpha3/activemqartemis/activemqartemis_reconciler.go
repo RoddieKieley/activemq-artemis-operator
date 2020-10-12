@@ -141,45 +141,89 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 	var log = logf.Log.WithName("controller_v2alpha3activemqartemis")
 	log.V(1).Info("ProcessCredentials")
 
-	credentialsSecretName := secrets.CredentialsNameBuilder.Name()
-	credentialsSecretNamespacedName := types.NamespacedName{
-		Name:      credentialsSecretName,
-		Namespace: customResource.Namespace,
-	}
-	stringDataMap := map[string]string{}
-	secretDefinition := secrets.NewSecret(credentialsSecretNamespacedName, credentialsSecretName, stringDataMap)
-	if err := resources.Retrieve(credentialsSecretNamespacedName, client, secretDefinition); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Secret: " + credentialsSecretNamespacedName.Name + " not found, will create")
-			credentialsSecretDefinition := reconciler.newCredentialsSecretDefinition(customResource)
-			requestedResources = append(requestedResources, credentialsSecretDefinition)
-			return 0
-		}
-	}
+	adminUser := ""
+	adminPassword := ""
+	//var credentialsSecretDefinition *corev1.Secret = nil
+	//credentialsSecretName := secrets.CredentialsNameBuilder.Name()
+	//credentialsSecretNamespacedName := types.NamespacedName{
+	//	Name:      credentialsSecretName,
+	//	Namespace: customResource.Namespace,
+	//}
+	//stringDataMap := map[string]string{}
+	//secretDefinition := secrets.NewSecret(credentialsSecretNamespacedName, credentialsSecretName, stringDataMap)
+	//if err := resources.Retrieve(credentialsSecretNamespacedName, client, secretDefinition); err != nil {
+	//	if errors.IsNotFound(err) {
+	//		log.Info("Secret: " + credentialsSecretNamespacedName.Name + " not found, will create")
+	//		credentialsSecretDefinition, adminUser, adminPassword = reconciler.newCredentialsSecretDefinition(customResource)
+	//		requestedResources = append(requestedResources, credentialsSecretDefinition)
+	//	}
+	//}
 
 	// TODO: Remove singular admin level user and password in favour of at least guest and admin access
 	secretName := secrets.CredentialsNameBuilder.Name()
 	envVarName1 := "AMQ_USER"
-	adminUser := customResource.Spec.AdminUser
-	if "" == adminUser {
+	for {
+		adminUser = customResource.Spec.AdminUser
+		if "" != adminUser {
+			break
+		}
+
 		if amqUserEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_USER"); nil != amqUserEnvVar {
 			adminUser = amqUserEnvVar.Value
 		}
-	}
-	if "" == adminUser {
+		if "" != adminUser {
+			break
+		}
+
 		adminUser = environments.Defaults.AMQ_USER
-	}
+		break
+	} // do once
+
+	//if "" == adminUser {
+	//	if amqUserEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_USER"); nil != amqUserEnvVar {
+	//		adminUser = amqUserEnvVar.Value
+	//	}
+	//}
+	//if "" == adminUser {
+	//	if "" == customResource.Spec.AdminUser {
+	//		adminUser = environments.Defaults.AMQ_USER
+	//	} else {
+	//		adminUser = customResource.Spec.AdminUser
+	//	}
+	//}
 
 	envVarName2 := "AMQ_PASSWORD"
-	adminPassword := customResource.Spec.AdminPassword
-	if "" == adminPassword {
+	for {
+		adminPassword = customResource.Spec.AdminPassword
+		if "" != adminPassword {
+			break
+		}
+
 		if amqPasswordEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_PASSWORD"); nil != amqPasswordEnvVar {
 			adminPassword = amqPasswordEnvVar.Value
 		}
-	}
-	if "" == adminPassword {
+		if "" != adminPassword {
+			break
+		}
+
 		adminPassword = environments.Defaults.AMQ_PASSWORD
-	}
+		break
+	} // do once
+	
+	
+	//adminPassword := customResource.Spec.AdminPassword
+	//if "" == adminPassword {
+	//	if amqPasswordEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_PASSWORD"); nil != amqPasswordEnvVar {
+	//		adminPassword = amqPasswordEnvVar.Value
+	//	}
+	//}
+	//if "" == adminPassword {
+	//	if "" == customResource.Spec.AdminPassword {
+	//		adminPassword = environments.Defaults.AMQ_PASSWORD
+	//	} else {
+	//		adminPassword = customResource.Spec.AdminPassword
+	//	}
+	//}
 	envVars := make(map[string]string)
 	envVars[envVarName1] = adminUser
 	envVars[envVarName2] = adminPassword
@@ -190,7 +234,7 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 	return statefulSetUpdates
 }
 
-func (reconciler *ActiveMQArtemisReconciler) newCredentialsSecretDefinition(customResource *brokerv2alpha3.ActiveMQArtemis) *corev1.Secret {
+func (reconciler *ActiveMQArtemisReconciler) newCredentialsSecretDefinition(customResource *brokerv2alpha3.ActiveMQArtemis) (*corev1.Secret, string, string) {
 
 	credentialsSecretName := secrets.CredentialsNameBuilder.Name()
 	namespacedName := types.NamespacedName{
@@ -224,7 +268,7 @@ func (reconciler *ActiveMQArtemisReconciler) newCredentialsSecretDefinition(cust
 	}
 	secretDefinition := secrets.NewSecret(namespacedName, namespacedName.Name, stringDataMap)
 
-	return secretDefinition
+	return secretDefinition, adminUser, adminPassword
 }
 
 func (reconciler *ActiveMQArtemisReconciler) ProcessDeploymentPlan(customResource *brokerv2alpha3.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, currentStatefulSet *appsv1.StatefulSet, firstTime bool) uint32 {
@@ -1586,7 +1630,19 @@ func MakeEnvVarArrayForCR(cr *brokerv2alpha3.ActiveMQArtemis) []corev1.EnvVar {
 	}
 
 	envVar := []corev1.EnvVar{}
-	envVarArrayForBasic := environments.AddEnvVarForBasic(requireLogin, journalType)
+	adminUser := ""
+	adminPassword := ""
+	if "" != cr.Spec.AdminUser {
+		adminUser = cr.Spec.AdminUser
+	} else {
+		adminUser = environments.Defaults.AMQ_USER
+	}
+	if "" != cr.Spec.AdminPassword {
+		adminPassword = cr.Spec.AdminPassword
+	} else {
+		adminPassword = environments.Defaults.AMQ_PASSWORD
+	}
+	envVarArrayForBasic := environments.AddEnvVarForBasicCredentials(requireLogin, journalType, adminUser, adminPassword)
 	envVar = append(envVar, envVarArrayForBasic...)
 	if cr.Spec.DeploymentPlan.PersistenceEnabled {
 		envVarArrayForPresistent := environments.AddEnvVarForPersistent(cr.Name)
