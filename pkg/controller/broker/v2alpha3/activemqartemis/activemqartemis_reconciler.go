@@ -143,22 +143,6 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 
 	adminUser := ""
 	adminPassword := ""
-	//var credentialsSecretDefinition *corev1.Secret = nil
-	//credentialsSecretName := secrets.CredentialsNameBuilder.Name()
-	//credentialsSecretNamespacedName := types.NamespacedName{
-	//	Name:      credentialsSecretName,
-	//	Namespace: customResource.Namespace,
-	//}
-	//stringDataMap := map[string]string{}
-	//secretDefinition := secrets.NewSecret(credentialsSecretNamespacedName, credentialsSecretName, stringDataMap)
-	//if err := resources.Retrieve(credentialsSecretNamespacedName, client, secretDefinition); err != nil {
-	//	if errors.IsNotFound(err) {
-	//		log.Info("Secret: " + credentialsSecretNamespacedName.Name + " not found, will create")
-	//		credentialsSecretDefinition, adminUser, adminPassword = reconciler.newCredentialsSecretDefinition(customResource)
-	//		requestedResources = append(requestedResources, credentialsSecretDefinition)
-	//	}
-	//}
-
 	// TODO: Remove singular admin level user and password in favour of at least guest and admin access
 	secretName := secrets.CredentialsNameBuilder.Name()
 	envVarName1 := "AMQ_USER"
@@ -179,19 +163,6 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 		break
 	} // do once
 
-	//if "" == adminUser {
-	//	if amqUserEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_USER"); nil != amqUserEnvVar {
-	//		adminUser = amqUserEnvVar.Value
-	//	}
-	//}
-	//if "" == adminUser {
-	//	if "" == customResource.Spec.AdminUser {
-	//		adminUser = environments.Defaults.AMQ_USER
-	//	} else {
-	//		adminUser = customResource.Spec.AdminUser
-	//	}
-	//}
-
 	envVarName2 := "AMQ_PASSWORD"
 	for {
 		adminPassword = customResource.Spec.AdminPassword
@@ -209,21 +180,7 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 		adminPassword = environments.Defaults.AMQ_PASSWORD
 		break
 	} // do once
-	
-	
-	//adminPassword := customResource.Spec.AdminPassword
-	//if "" == adminPassword {
-	//	if amqPasswordEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "AMQ_PASSWORD"); nil != amqPasswordEnvVar {
-	//		adminPassword = amqPasswordEnvVar.Value
-	//	}
-	//}
-	//if "" == adminPassword {
-	//	if "" == customResource.Spec.AdminPassword {
-	//		adminPassword = environments.Defaults.AMQ_PASSWORD
-	//	} else {
-	//		adminPassword = customResource.Spec.AdminPassword
-	//	}
-	//}
+
 	envVars := make(map[string]string)
 	envVars[envVarName1] = adminUser
 	envVars[envVarName2] = adminPassword
@@ -232,43 +189,6 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *
 	statefulSetUpdates := sourceEnvVarFromSecret(customResource, currentStatefulSet, &envVars, secretName, client, scheme)
 
 	return statefulSetUpdates
-}
-
-func (reconciler *ActiveMQArtemisReconciler) newCredentialsSecretDefinition(customResource *brokerv2alpha3.ActiveMQArtemis) (*corev1.Secret, string, string) {
-
-	credentialsSecretName := secrets.CredentialsNameBuilder.Name()
-	namespacedName := types.NamespacedName{
-		Name:      credentialsSecretName,
-		Namespace: customResource.Namespace,
-	}
-	adminUser := ""
-	adminPassword := ""
-	if "" == customResource.Spec.AdminUser {
-		adminUser = environments.Defaults.AMQ_USER
-	} else {
-		adminUser = customResource.Spec.AdminUser
-	}
-	if "" == customResource.Spec.AdminPassword {
-		adminPassword = environments.Defaults.AMQ_PASSWORD
-	} else {
-		adminPassword = customResource.Spec.AdminPassword
-	}
-
-	clusterUser := environments.Defaults.AMQ_CLUSTER_USER
-	clusterPassword := environments.Defaults.AMQ_CLUSTER_PASSWORD
-	// TODO: Remove this hack
-	environments.GLOBAL_AMQ_CLUSTER_USER = clusterUser
-	environments.GLOBAL_AMQ_CLUSTER_PASSWORD = clusterPassword
-
-	stringDataMap := map[string]string{
-		"AMQ_CLUSTER_USER":     clusterUser,
-		"AMQ_CLUSTER_PASSWORD": clusterPassword,
-		"AMQ_USER":             adminUser,
-		"AMQ_PASSWORD":         adminPassword,
-	}
-	secretDefinition := secrets.NewSecret(namespacedName, namespacedName.Name, stringDataMap)
-
-	return secretDefinition, adminUser, adminPassword
 }
 
 func (reconciler *ActiveMQArtemisReconciler) ProcessDeploymentPlan(customResource *brokerv2alpha3.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, currentStatefulSet *appsv1.StatefulSet, firstTime bool) uint32 {
@@ -1630,19 +1550,6 @@ func MakeEnvVarArrayForCR(cr *brokerv2alpha3.ActiveMQArtemis) []corev1.EnvVar {
 	}
 
 	envVar := []corev1.EnvVar{}
-	//adminUser := ""
-	//adminPassword := ""
-	//if "" != cr.Spec.AdminUser {
-	//	adminUser = cr.Spec.AdminUser
-	//} else {
-	//	adminUser = environments.Defaults.AMQ_USER
-	//}
-	//if "" != cr.Spec.AdminPassword {
-	//	adminPassword = cr.Spec.AdminPassword
-	//} else {
-	//	adminPassword = environments.Defaults.AMQ_PASSWORD
-	//}
-	//envVarArrayForBasic := environments.AddEnvVarForBasicCredentials(requireLogin, journalType, adminUser, adminPassword)
 	envVarArrayForBasic := environments.AddEnvVarForBasic(requireLogin, journalType)
 	envVar = append(envVar, envVarArrayForBasic...)
 	if cr.Spec.DeploymentPlan.PersistenceEnabled {
