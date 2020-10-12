@@ -174,14 +174,14 @@ func AddEnvVarForBasic(requireLogin string, journalType string) []corev1.EnvVar 
 	return envVarArray
 }
 
-func AddEnvVarForBasicCredentials(requireLogin string, journalType string, adminUser string, adminPassword string) []corev1.EnvVar {
-
-	envVarArray := AddEnvVarForBasic(requireLogin, journalType)
-	envVarArray = append(envVarArray, corev1.EnvVar{"AMQ_USER", adminUser, nil})
-	envVarArray = append(envVarArray, corev1.EnvVar{"AMQ_PASSWORD", adminPassword, nil})
-
-	return envVarArray
-}
+//func AddEnvVarForBasicCredentials(requireLogin string, journalType string, adminUser string, adminPassword string) []corev1.EnvVar {
+//
+//	envVarArray := AddEnvVarForBasic(requireLogin, journalType)
+//	envVarArray = append(envVarArray, corev1.EnvVar{"AMQ_USER", adminUser, nil})
+//	envVarArray = append(envVarArray, corev1.EnvVar{"AMQ_PASSWORD", adminPassword, nil})
+//
+//	return envVarArray
+//}
 
 func AddEnvVarForPersistent(customResourceName string) []corev1.EnvVar {
 

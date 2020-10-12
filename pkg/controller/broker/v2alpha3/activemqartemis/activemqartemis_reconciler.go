@@ -1630,19 +1630,20 @@ func MakeEnvVarArrayForCR(cr *brokerv2alpha3.ActiveMQArtemis) []corev1.EnvVar {
 	}
 
 	envVar := []corev1.EnvVar{}
-	adminUser := ""
-	adminPassword := ""
-	if "" != cr.Spec.AdminUser {
-		adminUser = cr.Spec.AdminUser
-	} else {
-		adminUser = environments.Defaults.AMQ_USER
-	}
-	if "" != cr.Spec.AdminPassword {
-		adminPassword = cr.Spec.AdminPassword
-	} else {
-		adminPassword = environments.Defaults.AMQ_PASSWORD
-	}
-	envVarArrayForBasic := environments.AddEnvVarForBasicCredentials(requireLogin, journalType, adminUser, adminPassword)
+	//adminUser := ""
+	//adminPassword := ""
+	//if "" != cr.Spec.AdminUser {
+	//	adminUser = cr.Spec.AdminUser
+	//} else {
+	//	adminUser = environments.Defaults.AMQ_USER
+	//}
+	//if "" != cr.Spec.AdminPassword {
+	//	adminPassword = cr.Spec.AdminPassword
+	//} else {
+	//	adminPassword = environments.Defaults.AMQ_PASSWORD
+	//}
+	//envVarArrayForBasic := environments.AddEnvVarForBasicCredentials(requireLogin, journalType, adminUser, adminPassword)
+	envVarArrayForBasic := environments.AddEnvVarForBasic(requireLogin, journalType)
 	envVar = append(envVar, envVarArrayForBasic...)
 	if cr.Spec.DeploymentPlan.PersistenceEnabled {
 		envVarArrayForPresistent := environments.AddEnvVarForPersistent(cr.Name)
