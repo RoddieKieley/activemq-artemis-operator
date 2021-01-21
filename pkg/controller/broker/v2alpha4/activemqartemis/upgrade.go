@@ -24,15 +24,16 @@ var OperandVersionFromOperatorVersion map[string]string = map[string]string{
 	"0.16.0": "0.1.0",
 	"0.17.0": "0.2.0",
 	"0.18.0": "0.2.1",
+	"0.19.0": "0.2.1",
 }
 var FullVersionFromMinorVersion map[string]string = map[string]string{
 	"01": "0.1.0",
-	"02": "0.2.0",
+	"02": "0.2.1",
 }
 
 var CompactFullVersionFromMinorVersion map[string]string = map[string]string{
 	"01": "010",
-	"02": "020",
+	"02": "021",
 }
 
 func checkProductUpgrade(cr *api.ActiveMQArtemis) (upgradesMinor, upgradesEnabled bool, err error) {
