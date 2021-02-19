@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"runtime"
+	osruntime "runtime"
 
 	"github.com/RHsyseng/operator-utils/pkg/olm"
 	"github.com/RHsyseng/operator-utils/pkg/resource"
@@ -23,7 +23,7 @@ import (
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources/statefulsets"
 	ss "github.com/artemiscloud/activemq-artemis-operator/pkg/resources/statefulsets"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/config"
-	cr2jinja2 "github.com/artemiscloud/activemq-artemis-operator/pkg/utils/cr2jinja2"
+	"github.com/artemiscloud/activemq-artemis-operator/pkg/utils/cr2jinja2"
 	"github.com/artemiscloud/activemq-artemis-operator/version"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1203,7 +1203,7 @@ func (reconciler *ActiveMQArtemisReconciler) deleteResource(customResource *brok
 	return deleted, stepsComplete
 }
 
-func (reconciler *ActiveMQArtemisReconciler) createRequestedResource(customResource *brokerv2alpha4.ActiveMQArtemis, client client.Client, scheme *k8sruntime.Scheme, namespacedName types.NamespacedName, requested resource.KubernetesResource, reqLogger logr.Logger, createError error, kind string) (error, error) {
+func (reconciler *ActiveMQArtemisReconciler) createRequestedResource(customResource *brokerv2alpha4.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, namespacedName types.NamespacedName, requested resource.KubernetesResource, reqLogger logr.Logger, createError error, kind string) (error, error) {
 
 	var err error = nil
 
@@ -1649,8 +1649,8 @@ func determineImageToUse(customResource *brokerv2alpha4.ActiveMQArtemis) string 
 		genericRelatedImageEnvVarName := "RELATED_IMAGE_ActiveMQ_Artemis_Broker_Kubernetes_" + versionToUse
 		// Default case of x86_64/amd64 covered here
 		archSpecificRelatedImageEnvVarName := genericRelatedImageEnvVarName
-		if "s390x" == runtime.GOARCH || "ppc64le" == runtime.GOARCH {
-			archSpecificRelatedImageEnvVarName = genericRelatedImageEnvVarName + "_" + runtime.GOARCH
+		if "s390x" == osruntime.GOARCH || "ppc64le" == osruntime.GOARCH {
+			archSpecificRelatedImageEnvVarName = genericRelatedImageEnvVarName + "_" + osruntime.GOARCH
 		}
 		log.V(1).Info("DetermineImageToUse GOARCH specific image env var is " + archSpecificRelatedImageEnvVarName)
 		imageName = os.Getenv(archSpecificRelatedImageEnvVarName)

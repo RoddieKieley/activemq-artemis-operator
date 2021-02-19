@@ -66,7 +66,8 @@ spec:
         - name: RELATED_IMAGE_ActiveMQ_Artemis_Broker_Kubernetes_781_s390x
           value: registry-proxy.engineering.redhat.com/rh-osbs/amq-broker-7-amq-broker-78-openshift-openj9-11-rhel8:7.8-4
 
-        image: registry-proxy.engineering.redhat.com/rh-osbs/amq7-amq-broker-rhel8-operator:0.19
+#       image: registry-proxy.engineering.redhat.com/rh-osbs/amq7-amq-broker-rhel8-operator:0.19
+        image: image-registry.openshift-image-registry.svc:5000/entmqbr-4413-3/activemq-artemis-operator:latest
         imagePullPolicy: Always
         name: activemq-artemis-operator
         resources: {}
