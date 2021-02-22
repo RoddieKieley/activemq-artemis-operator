@@ -78,12 +78,10 @@ var lastStatus olm.DeploymentStatus
 // and run it if exists.
 var initHelperScript = "/opt/amq-broker/script/default.sh"
 var brokerConfigRoot = "/amq/init/config"
-var initImageName = "amq-broker-init"
-var defaultInitImage = "quay.io/artemiscloud/activemq-artemis-broker-init:0.2.3"
 
 //default ApplyRule for address-settings
 var defApplyRule string = "merge_all"
-var yacfgProfileVersion = "2.16.0"
+var yacfgProfileVersion = version.LatestVersion
 
 type ActiveMQArtemisReconciler struct {
 	statefulSetUpdates uint32
@@ -1036,7 +1034,7 @@ func persistentSyncCausedUpdateOn(deploymentPlan *brokerv2alpha4.DeploymentPlanT
 
 func imageSyncCausedUpdateOn(customResource *brokerv2alpha4.ActiveMQArtemis, currentStatefulSet *appsv1.StatefulSet) bool {
 
-	imageName := determineImageToUse(customResource)
+	imageName := determineImageToUse(customResource, "Kubernetes")
 	if strings.Compare(currentStatefulSet.Spec.Template.Spec.Containers[0].Image, imageName) != 0 {
 		containerArrayLen := len(currentStatefulSet.Spec.Template.Spec.Containers)
 		for i := 0; i < containerArrayLen; i++ {
@@ -1402,7 +1400,13 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 	Spec := corev1.PodSpec{}
 	Containers := []corev1.Container{}
 
-	imageName := determineImageToUse(customResource)
+	imageName := ""
+	if "placeholder" == customResource.Spec.DeploymentPlan.Image {
+		reqLogger.Info("Determining the kubernetes image to use due to placeholder setting")
+		imageName = determineImageToUse(customResource, "Kubernetes")
+	} else {
+		imageName = customResource.Spec.DeploymentPlan.Image
+	}
 	reqLogger.V(1).Info("NewPodTemplateSpecForCR determined image to use " + imageName)
 	container := containers.MakeContainer(customResource.Name, imageName, MakeEnvVarArrayForCR(customResource))
 
@@ -1454,21 +1458,18 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 	log.Info("Creating init container for broker configuration")
 	initContainer := containers.MakeInitContainer("", "", MakeEnvVarArrayForCR(customResource))
 
-	//if custom init images present, don't use internal init image
-	//instead use custom image
-	//do normal internal init image stuff, then pass control to custom
-	//inits. Custom init must built with internal init as base image.
-
-	//resolve initImage
-	initImage := defaultInitImage
-	if len(customResource.Spec.DeploymentPlan.InitImage) > 0 {
-		initImage = customResource.Spec.DeploymentPlan.InitImage
+	initImageName := ""
+	if "placeholder" == customResource.Spec.DeploymentPlan.InitImage ||
+		0 == len(customResource.Spec.DeploymentPlan.InitImage) {
+		reqLogger.Info("Determining the init image to use due to placeholder setting")
+		initImageName = determineImageToUse(customResource, "Init")
+	} else {
+		initImageName = customResource.Spec.DeploymentPlan.Image
 	}
+	reqLogger.V(1).Info("NewPodTemplateSpecForCR determined initImage to use " + initImageName)
 
-	log.Info("Resolved init Image", "URL", initImage)
-
-	initContainer.Name = initImageName
-	initContainer.Image = initImage
+	initContainer.Name = "amq-broker-init"
+	initContainer.Image = initImageName
 	initContainer.Command = []string{"/bin/bash"}
 	initContainer.Resources = customResource.Spec.DeploymentPlan.Resources
 
@@ -1502,6 +1503,9 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 
 		envVarTuneFilePath := "TUNE_PATH"
 		outputDir := "/yacfg_etc"
+
+		compactVersionToUse := determineCompactVersionToUse(customResource)
+		yacfgProfileVersion = version.FullVersionFromCompactVersion[compactVersionToUse]
 
 		initCmd := "echo \"" + configYaml.String() + "\" > " + outputDir +
 			"/broker.yaml; cat /yacfg_etc/broker.yaml; yacfg --profile artemis/" +
@@ -1598,18 +1602,33 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 	return pts
 }
 
-func determineImageToUse(customResource *brokerv2alpha4.ActiveMQArtemis) string {
+func determineImageToUse(customResource *brokerv2alpha4.ActiveMQArtemis, imageTypeName string) string {
 
-	deploymentPlan := customResource.Spec.DeploymentPlan
-	specifiedVersion := customResource.Spec.Version
 	imageName := ""
-	log.V(1).Info("DetermineImageToUse DeploymentPlan.Image was " + deploymentPlan.Image)
+	compactVersionToUse := determineCompactVersionToUse(customResource)
 
-	// By default we should use the latest version
-	versionToUse := version.CompactLatestVersion
+	genericRelatedImageEnvVarName := "RELATED_IMAGE_ActiveMQ_Artemis_Broker_" + imageTypeName + "_" + compactVersionToUse
+	// Default case of x86_64/amd64 covered here
+	archSpecificRelatedImageEnvVarName := genericRelatedImageEnvVarName
+	if "s390x" == osruntime.GOARCH || "ppc64le" == osruntime.GOARCH {
+		archSpecificRelatedImageEnvVarName = genericRelatedImageEnvVarName + "_" + osruntime.GOARCH
+	}
+	log.V(1).Info("DetermineImageToUse GOARCH specific image env var is " + archSpecificRelatedImageEnvVarName)
+	imageName = os.Getenv(archSpecificRelatedImageEnvVarName)
+	log.V(1).Info("DetermineImageToUse imageName is " + imageName)
+
+	return imageName
+}
+
+func determineCompactVersionToUse(customResource *brokerv2alpha4.ActiveMQArtemis) string {
+
+	specifiedVersion := customResource.Spec.Version
+	compactVersionToUse := version.CompactLatestVersion
+	//yacfgProfileVersion
+
 	// See if we need to lookup what version to use
 	for {
-		// If there's no version specified...
+		// If there's no version specified just use the default above
 		if 0 == len(specifiedVersion) {
 			log.V(1).Info("DetermineImageToUse specifiedVersion was empty")
 			break
@@ -1641,27 +1660,11 @@ func determineImageToUse(customResource *brokerv2alpha4.ActiveMQArtemis) string 
 		}
 
 		log.V(1).Info("DetermineImageToUse all checks ok using user specified version " + specifiedVersion)
-		versionToUse = compactSpecifiedVersion
+		compactVersionToUse = compactSpecifiedVersion
 		break
 	}
 
-	if "placeholder" == deploymentPlan.Image {
-		genericRelatedImageEnvVarName := "RELATED_IMAGE_ActiveMQ_Artemis_Broker_Kubernetes_" + versionToUse
-		// Default case of x86_64/amd64 covered here
-		archSpecificRelatedImageEnvVarName := genericRelatedImageEnvVarName
-		if "s390x" == osruntime.GOARCH || "ppc64le" == osruntime.GOARCH {
-			archSpecificRelatedImageEnvVarName = genericRelatedImageEnvVarName + "_" + osruntime.GOARCH
-		}
-		log.V(1).Info("DetermineImageToUse GOARCH specific image env var is " + archSpecificRelatedImageEnvVarName)
-		imageName = os.Getenv(archSpecificRelatedImageEnvVarName)
-		log.V(1).Info("DetermineImageToUse imageName is " + imageName)
-	} else {
-		imageName = deploymentPlan.Image
-		log.V(1).Info("DetermineImageToUse imageName is " + imageName)
-	}
-	//log.V(5).Info("DetermineImageToUse returning " + imageName)
-
-	return imageName
+	return compactVersionToUse
 }
 
 func NewStatefulSetForCR(cr *brokerv2alpha4.ActiveMQArtemis) *appsv1.StatefulSet {

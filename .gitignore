@@ -79,3 +79,5 @@ tags
 
 # Eclipse IDE files
 .project
+
+amqversion/*
