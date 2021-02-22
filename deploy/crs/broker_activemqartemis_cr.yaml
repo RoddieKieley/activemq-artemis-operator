@@ -4,10 +4,9 @@ metadata:
   name: ex-aao
   application: ex-aao-app
 spec:
-  version: 0.2.0
   deploymentPlan:
     size: 1
-    image: quay.io/artemiscloud/activemq-artemis-broker-kubernetes:0.2.1
+    image: placeholder
     requireLogin: false
     persistenceEnabled: false
     journalType: nio
@@ -54,4 +53,5 @@ spec:
   upgrades:
       enabled: false
       minor: false
+  version: 2.16.0
 
