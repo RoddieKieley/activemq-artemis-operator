@@ -1194,8 +1194,14 @@ func initImageSyncCausedUpdateOn(customResource *brokerv2alpha4.ActiveMQArtemis,
 		reqLogger.Info("Using the user provided init image " + customResource.Spec.DeploymentPlan.InitImage)
 		initImageName = customResource.Spec.DeploymentPlan.InitImage
 	}
-	if len(currentStatefulSet.Spec.Template.Spec.InitContainers) <= 0 {
-		currentStatefulSet.Spec.Template.Spec.InitContainers[0] = containers.MakeInitContainer(customResource.Name + "-container-init", initImageName, MakeEnvVarArrayForCR(customResource))
+	// cap == capacity, len == current length used within that capacity
+	// a nil array will have both len 0 and cap 0
+	if 0 == cap(currentStatefulSet.Spec.Template.Spec.InitContainers) {
+		// make the array of len 0 cap 1
+		currentStatefulSet.Spec.Template.Spec.InitContainers = make([]corev1.Container, 0, 1)
+		initContainer := containers.MakeInitContainer(customResource.Name + "-container-init", initImageName, MakeEnvVarArrayForCR(customResource))
+		// append to pre-allocated array of len 0 cap 1 from make above
+		currentStatefulSet.Spec.Template.Spec.InitContainers = append(currentStatefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	}
 	if strings.Compare(currentStatefulSet.Spec.Template.Spec.InitContainers[0].Image, initImageName) != 0 {
 		containerArrayLen := len(currentStatefulSet.Spec.Template.Spec.InitContainers)
