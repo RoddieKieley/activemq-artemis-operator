@@ -1209,8 +1209,24 @@ func initImageSyncCausedUpdateOn(customResource *brokerv2alpha4.ActiveMQArtemis,
 		initImageName = customResource.Spec.DeploymentPlan.InitImage
 	}
 	if len(currentStatefulSet.Spec.Template.Spec.InitContainers) <= 0 {
-		currentStatefulSet.Spec.Template.Spec.InitContainers = []corev1.Container{}
-		currentStatefulSet.Spec.Template.Spec.InitContainers[0] = containers.MakeInitContainer(customResource.Name + "-container-init", initImageName, MakeEnvVarArrayForCR(customResource))
+		currentStatefulSet.Spec.Template.Spec.InitContainers = make([]corev1.Container, 0, 1)
+		reqLogger.Info(fmt.Sprintf("InitContainers len is %d cap is %d", len(currentStatefulSet.Spec.Template.Spec.InitContainers), cap(currentStatefulSet.Spec.Template.Spec.InitContainers)))
+		//reqLogger.Info(fmt.Sprintf("cr name is %s initImageName is %s len customResource.", customResource.Name, initImageName,))
+		arrEnvVar := MakeEnvVarArrayForCR(customResource)
+		reqLogger.Info(fmt.Sprintf("arrEnvVar len is %d cap is %d", len(arrEnvVar), cap(arrEnvVar)))
+		//currentStatefulSet.Spec.Template.Spec.InitContainers[0] = containers.MakeInitContainer(customResource.Name + "-container-init", initImageName, MakeEnvVarArrayForCR(customResource))
+		reqLogger.Info(fmt.Sprintf("currentStatefulSet is %s", currentStatefulSet))
+		reqLogger.Info(fmt.Sprintf("currentStatefulSet.Spec is %s", currentStatefulSet.Spec))
+		reqLogger.Info(fmt.Sprintf("currentStatefulSet.Spec.Template is %s", currentStatefulSet.Spec.Template))
+		reqLogger.Info(fmt.Sprintf("currentStatefulSet.Spec.Template.Spec is %s", currentStatefulSet.Spec.Template.Spec))
+		reqLogger.Info(fmt.Sprintf("currentStatefulSet.Spec.Template.Spec.InitContainers is %s", currentStatefulSet.Spec.Template.Spec.InitContainers))
+		containerName := customResource.Name + "-container-init"
+		initContainer := containers.MakeInitContainer(containerName, initImageName, arrEnvVar)
+		reqLogger.Info("returned from initContainer := containers.MakeInitContainer")
+		currentStatefulSet.Spec.Template.Spec.InitContainers = append(currentStatefulSet.Spec.Template.Spec.InitContainers, initContainer)
+		//currentStatefulSet.Spec.Template.Spec.InitContainers[0] = containers.MakeInitContainer(customResource.Name + "-container-init", initImageName, arrEnvVar)
+		reqLogger.Info("done appending")
+		reqLogger.Info(fmt.Sprintf("InitContainers len is %d cap is %d", len(currentStatefulSet.Spec.Template.Spec.InitContainers), cap(currentStatefulSet.Spec.Template.Spec.InitContainers)))
 	}
 	if strings.Compare(currentStatefulSet.Spec.Template.Spec.InitContainers[0].Image, initImageName) != 0 {
 		containerArrayLen := len(currentStatefulSet.Spec.Template.Spec.InitContainers)
