@@ -1496,7 +1496,7 @@ func getDeployedResources(instance *brokerv2alpha4.ActiveMQArtemis, client clien
 			&appsv1.StatefulSetList{},
 			&routev1.RouteList{},
 			&corev1.SecretList{},
-			&corev1.PodTemplateList{},
+			//&corev1.PodTemplateList{},
 			&corev1.EndpointsList{},
 		)
 	} else {
@@ -1506,7 +1506,7 @@ func getDeployedResources(instance *brokerv2alpha4.ActiveMQArtemis, client clien
 			&appsv1.StatefulSetList{},
 			&extv1b1.IngressList{},
 			&corev1.SecretList{},
-			&corev1.PodTemplateList{},
+			//&corev1.PodTemplateList{},
 			&corev1.EndpointsList{},
 		)
 	}
