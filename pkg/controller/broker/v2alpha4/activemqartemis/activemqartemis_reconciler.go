@@ -10,6 +10,7 @@ import (
 	"github.com/RHsyseng/operator-utils/pkg/resource"
 	"github.com/RHsyseng/operator-utils/pkg/resource/compare"
 	"github.com/RHsyseng/operator-utils/pkg/resource/read"
+	//"github.com/RHsyseng/operator-utils/pkg/resource/write"
 	activemqartemisscaledown "github.com/artemiscloud/activemq-artemis-operator/pkg/controller/broker/v2alpha1/activemqartemisscaledown"
 	v2alpha2activemqartemisaddress "github.com/artemiscloud/activemq-artemis-operator/pkg/controller/broker/v2alpha2/activemqartemisaddress"
 	"github.com/artemiscloud/activemq-artemis-operator/pkg/resources"
@@ -79,6 +80,8 @@ var lastStatus olm.DeploymentStatus
 // and run it if exists.
 var initHelperScript = "/opt/amq-broker/script/default.sh"
 var brokerConfigRoot = "/amq/init/config"
+var cfgVolumeName = "amq-cfg-dir"
+var outputDir = "/yacfg_etc"
 
 //default ApplyRule for address-settings
 var defApplyRule string = "merge_all"
@@ -114,16 +117,19 @@ func (reconciler *ActiveMQArtemisReconciler) Process(fsm *ActiveMQArtemisFSM, cl
 	statefulSetUpdates |= reconciler.ProcessCredentials(fsm.customResource, client, scheme, currentStatefulSet)
 	statefulSetUpdates |= reconciler.ProcessAcceptorsAndConnectors(fsm.customResource, client, scheme, currentStatefulSet)
 	statefulSetUpdates |= reconciler.ProcessConsole(fsm.customResource, client, scheme, currentStatefulSet)
+	if reconciler.ProcessAddressSettings(fsm.customResource, fsm.prevCustomResource, client, currentStatefulSet) {
+		statefulSetUpdates |= statefulSetInitImageUpdated
+	}
 
 	requestedResources = append(requestedResources, currentStatefulSet)
 	stepsComplete := reconciler.ProcessResources(fsm.customResource, client, scheme, currentStatefulSet)
 
-	if statefulSetUpdates > 0 {
-		ssNamespacedName := types.NamespacedName{Name: ss.NameBuilder.Name(), Namespace: fsm.customResource.Namespace}
-		if err := resources.Update(ssNamespacedName, client, currentStatefulSet); err != nil {
-			log.Error(err, "Failed to update StatefulSet.", "Deployment.Namespace", currentStatefulSet.Namespace, "Deployment.Name", currentStatefulSet.Name)
-		}
-	}
+	//if statefulSetUpdates > 0 {
+	//	ssNamespacedName := types.NamespacedName{Name: ss.NameBuilder.Name(), Namespace: fsm.customResource.Namespace}
+	//	if err := resources.Update(ssNamespacedName, client, currentStatefulSet); err != nil {
+	//		log.Error(err, "Failed to update StatefulSet.", "Deployment.Namespace", currentStatefulSet.Namespace, "Deployment.Name", currentStatefulSet.Name)
+	//	}
+	//}
 
 	return statefulSetUpdates, stepsComplete
 }
@@ -139,14 +145,14 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(fsm *ActiveMQArt
 		log.Info("StatefulSet: " + ssNamespacedName.Name + " not found, will create")
 		currentStatefulSet = NewStatefulSetForCR(fsm.customResource)
 		firstTime = true
-	} else {
-		log.Info("StatefulSet: " + currentStatefulSet.Name + " found")
-		//update statefulset with customer resource
-		if reconciler.ProcessAddressSettings(fsm.customResource, fsm.prevCustomResource, client) {
-			log.Info("There are new address settings change in the cr, creating a new pod template to update")
-			*fsm.prevCustomResource = *fsm.customResource
-			currentStatefulSet.Spec.Template = NewPodTemplateSpecForCR(fsm.customResource)
-		}
+	//} else {
+	//	log.Info("StatefulSet: " + currentStatefulSet.Name + " found.")
+	//	//update statefulset with customer resource
+	//	if reconciler.ProcessAddressSettings(fsm.customResource, fsm.prevCustomResource, client) {
+	//		log.Info("There are new address settings change in the cr, creating a new pod template to update")
+	//	//	*fsm.prevCustomResource = *fsm.customResource
+	//		currentStatefulSet.Spec.Template = NewPodTemplateSpecForCR(fsm.customResource)
+	//	}
 	}
 
 	headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
@@ -266,17 +272,24 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessDeploymentPlan(customResourc
 	return reconciler.statefulSetUpdates
 }
 
-func (reconciler *ActiveMQArtemisReconciler) ProcessAddressSettings(customResource *brokerv2alpha4.ActiveMQArtemis, prevCustomResource *brokerv2alpha4.ActiveMQArtemis, client client.Client) bool {
+func (reconciler *ActiveMQArtemisReconciler) ProcessAddressSettings(customResource *brokerv2alpha4.ActiveMQArtemis, prevCustomResource *brokerv2alpha4.ActiveMQArtemis, client client.Client, currentStatefulSet *appsv1.StatefulSet) bool {
 
 	var log = logf.Log.WithName("controller_v2alpha4activemqartemis")
 	log.Info("Process addresssettings")
 
-	if len(customResource.Spec.AddressSettings.AddressSetting) == 0 {
+	if 0 == len(customResource.Spec.AddressSettings.AddressSetting) {
 		return false
 	}
 
 	//we need to compare old with new and update if they are different.
-	return compareAddressSettings(&prevCustomResource.Spec.AddressSettings, &customResource.Spec.AddressSettings)
+	addressSettingsUpdated := compareAddressSettings(&prevCustomResource.Spec.AddressSettings, &customResource.Spec.AddressSettings)
+	if addressSettingsUpdated {
+		ReallyProcessAddressSettings(customResource, currentStatefulSet.Spec.Template.Spec)
+	}
+
+	//we need to compare old with new and update if they are different.
+	//return compareAddressSettings(&prevCustomResource.Spec.AddressSettings, &customResource.Spec.AddressSettings)
+	return addressSettingsUpdated
 }
 
 //returns true if currentAddressSettings need update
@@ -1185,6 +1198,9 @@ func initImageSyncCausedUpdateOn(customResource *brokerv2alpha4.ActiveMQArtemis,
 	reqLogger := log.WithName(customResource.Name)
 	reqLogger.V(1).Info("initImageSyncCausedUpdateOn")
 
+	initImageUpdated := false
+
+	// Check the init image name we want to use
 	initImageName := ""
 	if "placeholder" == customResource.Spec.DeploymentPlan.InitImage ||
 		0 == len(customResource.Spec.DeploymentPlan.InitImage) {
@@ -1194,6 +1210,8 @@ func initImageSyncCausedUpdateOn(customResource *brokerv2alpha4.ActiveMQArtemis,
 		reqLogger.Info("Using the user provided init image " + customResource.Spec.DeploymentPlan.InitImage)
 		initImageName = customResource.Spec.DeploymentPlan.InitImage
 	}
+
+	// Check to ensure prerequisites exist
 	// cap == capacity, len == current length used within that capacity
 	// a nil array will have both len 0 and cap 0
 	if 0 == cap(currentStatefulSet.Spec.Template.Spec.InitContainers) {
@@ -1203,15 +1221,33 @@ func initImageSyncCausedUpdateOn(customResource *brokerv2alpha4.ActiveMQArtemis,
 		// append to pre-allocated array of len 0 cap 1 from make above
 		currentStatefulSet.Spec.Template.Spec.InitContainers = append(currentStatefulSet.Spec.Template.Spec.InitContainers, initContainer)
 	}
+
+	// These functions don't check for existence, might need to do that first
+	// Array now exists, let's check the env vars
+	reqLogger.V(1).Info("initImageSyncCausedUpdateOn createInitContainerConfigEnvVarsInContainer")
+	envBrokerCustomInstanceDir := createInitContainerConfigEnvVarsInContainer(currentStatefulSet.Spec.Template.Spec)
+
+	//add empty-dir volume and volumeMounts to main container
+	reqLogger.V(1).Info("initImageSyncCausedUpdateOn addEmptyDirVolumeAndMountToContainer")
+	addEmptyDirVolumeAndMountToContainer(cfgVolumeName, currentStatefulSet.Spec.Template.Spec)
+
+	// add tool-dir volume and volumeMounts to main container
+	reqLogger.V(1).Info("initImageSyncCausedUpdateOn addConfigDirVolumeAndMountsToContainer")
+	addConfigDirVolumeAndMountsToContainer(currentStatefulSet.Spec.Template.Spec)
+
+	reqLogger.V(1).Info("initImageSyncCausedUpdateOn calling createContainerConfigEnvVarsInContainer")
+	createContainerConfigEnvVarsInContainer(currentStatefulSet.Spec.Template.Spec, envBrokerCustomInstanceDir)
+
+	// If we haven't just created the InitContainers array then we could have a discrepancy in the image name
 	if strings.Compare(currentStatefulSet.Spec.Template.Spec.InitContainers[0].Image, initImageName) != 0 {
 		containerArrayLen := len(currentStatefulSet.Spec.Template.Spec.InitContainers)
 		for i := 0; i < containerArrayLen; i++ {
 			currentStatefulSet.Spec.Template.Spec.InitContainers[i].Image = initImageName
 		}
-		return true
+		initImageUpdated = true
 	}
 
-	return false
+	return initImageUpdated
 }
 
 func (reconciler *ActiveMQArtemisReconciler) ProcessResources(customResource *brokerv2alpha4.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, currentStatefulSet *appsv1.StatefulSet) uint8 {
@@ -1241,13 +1277,48 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessResources(customResource *br
 
 	requested := compare.NewMapBuilder().Add(requestedResources...).ResourceMap()
 	comparator := compare.NewMapComparator()
-	deltas := comparator.Compare(deployed, requested)
+	//writer := write.New(client).WithOwnerController(customResource, scheme)
+
+	//deltas := comparator.Compare(deployed, requested)
+	// Code lifted from map.go of RHsyseng operator-utils
+	reqLogger.Info(fmt.Sprintf("ProcessResources len deployed %d", len(deployed)))
+	reqLogger.Info(fmt.Sprintf("ProcessResources len requestedResources %d", len(requestedResources)))
+	deltas := make(map[reflect.Type]compare.ResourceDelta)
+
+	for deployedType, deployedArray := range deployed {
+		reqLogger.Info("ProcessResources ranging over deployed, current deployedType is " + deployedType.String())
+		requestedArrayOfType := requested[deployedType]
+
+		reqLogger.Info(fmt.Sprintf("len of requested of deployedType %d", len(requestedArrayOfType)))
+		deltas[deployedType] = comparator.Comparator.CompareArrays(deployedArray, requestedArrayOfType)
+		for deltaType, resourceDelta := range deltas {
+			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta is %s", deltaType, resourceDelta))
+			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta.Updated is %s", deltaType, resourceDelta.Updated))
+		}
+		reqLogger.Info(fmt.Sprintf("len deltas map for deployedType %s is %d", deployedType.String(), len(deltas)))
+	}
+
+	//// Only additions
+	//for requestedType, requestedArray := range requested {
+	//	reqLogger.Info(fmt.Sprintf("checking deployed for requestedType %s", requestedType))
+	//	if _, ok := deployed[requestedType]; !ok {
+	//		//Item type in request does not exist in deployed set, needs to be added:
+	//		reqLogger.Info(fmt.Sprintf("requestedType %s not in deployed, adding to deltas", requestedType))
+	//		deltas[requestedType] = compare.ResourceDelta{Added: requestedArray}
+	//	}
+	//}
+
 	namespacedName := types.NamespacedName{
 		Name:      customResource.Name,
 		Namespace: customResource.Namespace,
 	}
+	reqLogger.V(1).Info("ProcessResources ranging over map of resourceType to ResourceDelta")
 	for resourceType, delta := range deltas {
 		reqLogger.Info("", "instances of ", resourceType, "Will create ", len(delta.Added), "update ", len(delta.Updated), "and delete", len(delta.Removed))
+		if !delta.HasChanges() {
+			reqLogger.Info("resourceType " + resourceType.String() + " has no changes, skipping!")
+			continue
+		}
 
 		for index := range delta.Added {
 			resourceToAdd := delta.Added[index]
@@ -1425,6 +1496,8 @@ func getDeployedResources(instance *brokerv2alpha4.ActiveMQArtemis, client clien
 			&appsv1.StatefulSetList{},
 			&routev1.RouteList{},
 			&corev1.SecretList{},
+			&corev1.PodTemplateList{},
+			&corev1.EndpointsList{},
 		)
 	} else {
 		resourceMap, err = reader.ListAll(
@@ -1433,6 +1506,8 @@ func getDeployedResources(instance *brokerv2alpha4.ActiveMQArtemis, client clien
 			&appsv1.StatefulSetList{},
 			&extv1b1.IngressList{},
 			&corev1.SecretList{},
+			&corev1.PodTemplateList{},
+			&corev1.EndpointsList{},
 		)
 	}
 	if err != nil {
@@ -1603,31 +1678,13 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 	}
 	Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
 
-	var cfgVolumeName string = "amq-cfg-dir"
-
-	//tell container don't config
-	envConfigBroker := corev1.EnvVar{
-		Name:  "CONFIG_BROKER",
-		Value: "false",
-	}
-	environments.Create(Spec.Containers, &envConfigBroker)
-
-	envBrokerCustomInstanceDir := corev1.EnvVar{
-		Name:  "CONFIG_INSTANCE_DIR",
-		Value: brokerConfigRoot,
-	}
-	environments.Create(Spec.Containers, &envBrokerCustomInstanceDir)
+	envBrokerCustomInstanceDir := createInitContainerConfigEnvVarsInContainer(Spec)
 
 	//add empty-dir volume and volumeMounts to main container
-	volumeForCfg := volumes.MakeVolumeForCfg(cfgVolumeName)
-	Spec.Volumes = append(Spec.Volumes, volumeForCfg)
-
-	volumeMountForCfg := volumes.MakeVolumeMountForCfg(cfgVolumeName, brokerConfigRoot)
-	Spec.Containers[0].VolumeMounts = append(Spec.Containers[0].VolumeMounts, volumeMountForCfg)
+	addEmptyDirVolumeAndMountToContainer(cfgVolumeName, Spec)
 
 	// TODO: Refactor the container and the init container sections to exist in separate functions
 	log.Info("Creating init container for broker configuration")
-	Spec.InitContainers[0] = containers.MakeInitContainer("", "", MakeEnvVarArrayForCR(customResource))
 
 	initImageName := ""
 	if "placeholder" == customResource.Spec.DeploymentPlan.InitImage ||
@@ -1640,34 +1697,48 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 	}
 	reqLogger.V(1).Info("NewPodTemplateSpecForCR determined initImage to use " + initImageName)
 
-	Spec.InitContainers[0].Name = customResource.Name + "-container-init"
-	Spec.InitContainers[0].Image = initImageName
+	//Spec.InitContainers[0] = containers.MakeInitContainer("", "", MakeEnvVarArrayForCR(customResource))
+	if 0 == cap(Spec.InitContainers) {
+		Spec.InitContainers = make([]corev1.Container, 0, 1)
+		Spec.InitContainers = append(Spec.InitContainers, containers.MakeInitContainer(customResource.Name + "-container-init", initImageName, MakeEnvVarArrayForCR(customResource)))
+	}
+	//Spec.InitContainers[0].Name = customResource.Name + "-container-init"
+	//Spec.InitContainers[0].Image = initImageName
 	Spec.InitContainers[0].Command = []string{"/bin/bash"}
 	Spec.InitContainers[0].Resources = customResource.Spec.DeploymentPlan.Resources
 
-	//now make volumes mount available to init image
-	log.Info("making volume mounts")
-
-	//setup volumeMounts
-	volumeMountForCfgRoot := volumes.MakeVolumeMountForCfg(cfgVolumeName, brokerConfigRoot)
-	Spec.InitContainers[0].VolumeMounts = append(Spec.InitContainers[0].VolumeMounts, volumeMountForCfgRoot)
-
-	outputDir := "/yacfg_etc"
-	volumeMountForInitCfg := volumes.MakeVolumeMountForCfg("tool-dir", outputDir)
-	Spec.InitContainers[0].VolumeMounts = append(Spec.InitContainers[0].VolumeMounts, volumeMountForInitCfg)
-
-	//add empty-dir volume
-	volumeForInitCfg := volumes.MakeVolumeForCfg("tool-dir")
-	Spec.Volumes = append(Spec.Volumes, volumeForInitCfg)
-
-	volumeMountForCfgInitRoot := volumes.MakeVolumeMountForCfg(cfgVolumeName, brokerConfigRoot)
-	Spec.InitContainers[0].VolumeMounts = append(Spec.InitContainers[0].VolumeMounts, volumeMountForCfgInitRoot)
+	addConfigDirVolumeAndMountsToContainer(Spec)
 
 	log.Info("Total volumes ", "volumes", Spec.Volumes)
 
-	//address settings
 	addressSettings := customResource.Spec.AddressSettings.AddressSetting
 	if len(addressSettings) > 0 {
+		ReallyProcessAddressSettings(customResource, Spec)
+	} else {
+		log.Info("No addressetings")
+
+		configCmd := "/opt/amq/bin/launch.sh"
+		Spec.InitContainers[0].Args = []string{"-c", configCmd + " && " + initHelperScript}
+	}
+
+	reqLogger.V(1).Info("NewPodTemplateSpecForCR calling createContainerConfigEnvVarsInContainer")
+	createContainerConfigEnvVarsInContainer(Spec, envBrokerCustomInstanceDir)
+
+	log.Info("Final Init spec", "Detail", Spec.InitContainers)
+	pts.Spec = Spec
+
+	return pts
+}
+
+func ReallyProcessAddressSettings(customResource *brokerv2alpha4.ActiveMQArtemis, Spec corev1.PodSpec) {
+
+	// Log where we are and what we're doing
+	reqLogger := log.WithName(customResource.Name)
+	reqLogger.V(1).Info("ReallyProcessAddressSettings")
+
+	//address settings
+	addressSettings := customResource.Spec.AddressSettings.AddressSetting
+	//if len(addressSettings) > 0 {
 		reqLogger.Info("processing address-settings")
 
 		var configYaml strings.Builder
@@ -1693,7 +1764,6 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 		}
 		jsonSpecials := string(byteArray)
 
-		envVarTuneFilePath := "TUNE_PATH"
 		compactVersionToUse := determineCompactVersionToUse(customResource)
 		yacfgProfileVersion = version.FullVersionFromCompactVersion[compactVersionToUse]
 		yacfgProfileName := version.YacfgProfileName
@@ -1727,18 +1797,22 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 		environments.Create(Spec.InitContainers, &mergeBrokerAs)
 
 		//pass cfg file location and apply rule to init container via env vars
+		envVarTuneFilePath := "TUNE_PATH"
 		tuneFile := corev1.EnvVar{
 			Name:  envVarTuneFilePath,
 			Value: outputDir,
 		}
 		environments.Create(Spec.InitContainers, &tuneFile)
 
-	} else {
-		log.Info("No addressetings")
+	//} else {
+	//	log.Info("No addressetings")
+	//
+	//	configCmd := "/opt/amq/bin/launch.sh"
+	//	Spec.InitContainers[0].Args = []string{"-c", configCmd + " && " + initHelperScript}
+	//}
+}
 
-		configCmd := "/opt/amq/bin/launch.sh"
-		Spec.InitContainers[0].Args = []string{"-c", configCmd + " && " + initHelperScript}
-	}
+func createContainerConfigEnvVarsInContainer(Spec corev1.PodSpec, envBrokerCustomInstanceDir corev1.EnvVar) {
 
 	dontRun := corev1.EnvVar{
 		Name:  "RUN_BROKER",
@@ -1751,12 +1825,49 @@ func NewPodTemplateSpecForCR(customResource *brokerv2alpha4.ActiveMQArtemis) cor
 		Value: brokerConfigRoot,
 	}
 	environments.Create(Spec.InitContainers, &envBrokerCustomInstanceDir)
+}
 
-	log.Info("Final Init spec", "Detail", Spec.InitContainers)
+func addConfigDirVolumeAndMountsToContainer(Spec corev1.PodSpec) {
+	//now make volumes mount available to init image
+	log.Info("making volume mounts")
 
-	pts.Spec = Spec
+	//setup volumeMounts
+	volumeMountForCfgRoot := volumes.MakeVolumeMountForCfg(cfgVolumeName, brokerConfigRoot)
+	Spec.InitContainers[0].VolumeMounts = append(Spec.InitContainers[0].VolumeMounts, volumeMountForCfgRoot)
 
-	return pts
+	volumeMountForInitCfg := volumes.MakeVolumeMountForCfg("tool-dir", outputDir)
+	Spec.InitContainers[0].VolumeMounts = append(Spec.InitContainers[0].VolumeMounts, volumeMountForInitCfg)
+
+	//add empty-dir volume
+	volumeForInitCfg := volumes.MakeVolumeForCfg("tool-dir")
+	Spec.Volumes = append(Spec.Volumes, volumeForInitCfg)
+
+	volumeMountForCfgInitRoot := volumes.MakeVolumeMountForCfg(cfgVolumeName, brokerConfigRoot)
+	Spec.InitContainers[0].VolumeMounts = append(Spec.InitContainers[0].VolumeMounts, volumeMountForCfgInitRoot)
+}
+
+func addEmptyDirVolumeAndMountToContainer(cfgVolumeName string, Spec corev1.PodSpec) {
+	volumeForCfg := volumes.MakeVolumeForCfg(cfgVolumeName)
+	Spec.Volumes = append(Spec.Volumes, volumeForCfg)
+
+	volumeMountForCfg := volumes.MakeVolumeMountForCfg(cfgVolumeName, brokerConfigRoot)
+	Spec.Containers[0].VolumeMounts = append(Spec.Containers[0].VolumeMounts, volumeMountForCfg)
+}
+
+func createInitContainerConfigEnvVarsInContainer(Spec corev1.PodSpec) corev1.EnvVar {
+	//tell container don't config
+	envConfigBroker := corev1.EnvVar{
+		Name:  "CONFIG_BROKER",
+		Value: "false",
+	}
+	environments.Create(Spec.Containers, &envConfigBroker)
+
+	envBrokerCustomInstanceDir := corev1.EnvVar{
+		Name:  "CONFIG_INSTANCE_DIR",
+		Value: brokerConfigRoot,
+	}
+	environments.Create(Spec.Containers, &envBrokerCustomInstanceDir)
+	return envBrokerCustomInstanceDir
 }
 
 func determineImageToUse(customResource *brokerv2alpha4.ActiveMQArtemis, imageTypeName string) string {
