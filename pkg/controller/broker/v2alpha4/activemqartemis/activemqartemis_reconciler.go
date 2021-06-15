@@ -134,6 +134,14 @@ func (reconciler *ActiveMQArtemisReconciler) Process(fsm *ActiveMQArtemisFSM, cl
 	return statefulSetUpdates, stepsComplete
 }
 
+func (reconciler *ActiveMQArtemisReconciler) ProcessServices(ssNamespacedName types.NamespacedName) {
+	headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
+	labels := selectors.LabelBuilder.Labels()
+	pingServiceDefinition := svc.NewPingServiceDefinitionForCR(ssNamespacedName, labels, labels)
+	requestedResources = append(requestedResources, headlessServiceDefinition)
+	requestedResources = append(requestedResources, pingServiceDefinition)
+}
+
 func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(fsm *ActiveMQArtemisFSM, client client.Client, log logr.Logger, firstTime bool) (*appsv1.StatefulSet, bool) {
 
 	ssNamespacedName := types.NamespacedName{
@@ -145,6 +153,30 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(fsm *ActiveMQArt
 		log.Info("StatefulSet: " + ssNamespacedName.Name + " not found, will create")
 		currentStatefulSet = NewStatefulSetForCR(fsm.customResource)
 		firstTime = true
+	} else if nil == err {
+		// Found it
+		log.Info("StatefulSet: " + ssNamespacedName.Name + " found, checking owner apiVersion")
+		objectMetadata := currentStatefulSet.GetObjectMeta()
+		log.Info(fmt.Sprintf("ObjectMetadata: %s", objectMetadata))
+		ownerReferenceArray := objectMetadata.GetOwnerReferences()
+		log.Info(fmt.Sprintf("ownerReferenceArray: %s", ownerReferenceArray))
+		if 0 < len(ownerReferenceArray) {
+			// got at least one owner
+			log.Info("ownerReferenceArray has at least one owner")
+			log.Info(fmt.Sprintf("ownerReference[0].APIVersion: %s", ownerReferenceArray[0].APIVersion))
+			if "broker.amq.io/v2alpha3" == ownerReferenceArray[0].APIVersion {
+				// nuke it and recreate
+				log.Info(fmt.Sprintf("ownerReference[0].APIVersion: %s - removing in favour of upgraded v2alpha4", ownerReferenceArray[0].APIVersion))
+				deleteErr := resources.Delete(ssNamespacedName, client, currentStatefulSet)
+				if nil == deleteErr {
+					log.Info(fmt.Sprintf("sucessfully deleted ownerReference[0].APIVersion: %s, recreating v2alpha4 version for use", ownerReferenceArray[0].APIVersion))
+					currentStatefulSet = NewStatefulSetForCR(fsm.customResource)
+					firstTime = true
+				}
+			}
+		}
+
+	}
 	//} else {
 	//	log.Info("StatefulSet: " + currentStatefulSet.Name + " found.")
 	//	//update statefulset with customer resource
@@ -153,21 +185,48 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(fsm *ActiveMQArt
 	//	//	*fsm.prevCustomResource = *fsm.customResource
 	//		currentStatefulSet.Spec.Template = NewPodTemplateSpecForCR(fsm.customResource)
 	//	}
-	}
+	//}
 
-	headlessServiceDefinition := svc.NewHeadlessServiceForCR(ssNamespacedName, serviceports.GetDefaultPorts())
-	labels := selectors.LabelBuilder.Labels()
-	pingServiceDefinition := svc.NewPingServiceDefinitionForCR(ssNamespacedName, labels, labels)
-	requestedResources = append(requestedResources, headlessServiceDefinition)
-	requestedResources = append(requestedResources, pingServiceDefinition)
+	reconciler.ProcessServices(ssNamespacedName)
 
 	return currentStatefulSet, firstTime
 }
+
+//func (reconciler *ActiveMQArtemisReconciler) ProcessSecrets(customResource *brokerv2alpha4.ActiveMQArtemis) {// *corev1.Secret {
+//
+//	namespacedName := types.NamespacedName{
+//		Name:      secrets.CredentialsNameBuilder.Name(),
+//		Namespace: customResource.Namespace,
+//	}
+//	stringDataMap := map[string]string{
+//		"AMQ_CLUSTER_USER":     "",
+//		"AMQ_CLUSTER_PASSWORD": "",
+//		"AMQ_USER":             "",
+//		"AMQ_PASSWORD":         "",
+//	}
+//	//secretDefinition := secrets.Create(customResource, namespacedName, stringDataMap, client, scheme)
+//	secretDefinition := secrets.NewSecret(namespacedName, namespacedName.Name, stringDataMap)
+//	requestedResources = append(requestedResources, secretDefinition)
+//
+//	namespacedName.Name = secrets.NettyNameBuilder.Name()
+//	nettyDataMap := map[string]string{
+//		"AMQ_ACCEPTORS":  "",
+//		"AMQ_CONNECTORS": "",
+//	}
+//	//secretDefinition = secrets.Create(customResource, namespacedName, nettyDataMap, client, scheme)
+//	secretDefinition = secrets.NewSecret(namespacedName, namespacedName.Name, nettyDataMap)
+//	requestedResources = append(requestedResources, secretDefinition)
+//
+//	//return secretDefinition
+//}
+
 
 func (reconciler *ActiveMQArtemisReconciler) ProcessCredentials(customResource *brokerv2alpha4.ActiveMQArtemis, client client.Client, scheme *runtime.Scheme, currentStatefulSet *appsv1.StatefulSet) uint32 {
 
 	var log = logf.Log.WithName("controller_v2alpha4activemqartemis")
 	log.V(1).Info("ProcessCredentials")
+
+	//reconciler.ProcessSecrets(customResource)
 
 	envVars := make(map[string]ValueInfo)
 
@@ -1283,6 +1342,7 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessResources(customResource *br
 	// Code lifted from map.go of RHsyseng operator-utils
 	reqLogger.Info(fmt.Sprintf("ProcessResources len deployed %d", len(deployed)))
 	reqLogger.Info(fmt.Sprintf("ProcessResources len requestedResources %d", len(requestedResources)))
+	reqLogger.Info(fmt.Sprintf("ProcessResources len requested %d", len(requested)))
 	deltas := make(map[reflect.Type]compare.ResourceDelta)
 
 	for deployedType, deployedArray := range deployed {
@@ -1293,9 +1353,22 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessResources(customResource *br
 		deltas[deployedType] = comparator.Comparator.CompareArrays(deployedArray, requestedArrayOfType)
 		for deltaType, resourceDelta := range deltas {
 			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta is %s", deltaType, resourceDelta))
+			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta.Added is %s", deltaType, resourceDelta.Added))
 			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta.Updated is %s", deltaType, resourceDelta.Updated))
+			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta.Removed is %s", deltaType, resourceDelta.Removed))
 		}
 		reqLogger.Info(fmt.Sprintf("len deltas map for deployedType %s is %d", deployedType.String(), len(deltas)))
+	}
+
+	for requestedType, requestedArray := range requested {
+		reqLogger.Info("ProcessResources ranging over requested, current requestedType is " + requestedType.String())
+		if _, ok := deployed[requestedType]; !ok {
+			//Item type in request does not exist in deployed set, needs to be added:
+			resourceDeltaAdded := compare.ResourceDelta{Added: requestedArray}
+			//deltas[requestedType] = compare.ResourceDelta{Added: requestedArray}
+			deltas[requestedType] = resourceDeltaAdded
+			reqLogger.Info(fmt.Sprintf("deltaType is %s, resourceDelta.Added is %s", requestedType, resourceDeltaAdded))
+		}
 	}
 
 	//// Only additions
