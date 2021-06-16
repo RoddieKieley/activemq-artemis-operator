@@ -130,6 +130,8 @@ func (reconciler *ActiveMQArtemisReconciler) Process(fsm *ActiveMQArtemisFSM, cl
 
 func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(fsm *ActiveMQArtemisFSM, client client.Client, log logr.Logger, firstTime bool) (*appsv1.StatefulSet, bool) {
 
+	statefulsetRecreationRequired := false
+
 	ssNamespacedName := types.NamespacedName{
 		Name:      ss.NameBuilder.Name(),
 		Namespace: fsm.customResource.Namespace,
@@ -141,26 +143,43 @@ func (reconciler *ActiveMQArtemisReconciler) ProcessStatefulSet(fsm *ActiveMQArt
 		firstTime = true
 	} else if nil == err {
 		// Found it
-		log.Info("StatefulSet: " + ssNamespacedName.Name + " found, checking owner apiVersion")
+		log.Info("StatefulSet: " + ssNamespacedName.Name + " found")
+		log.Info("Checking for statefulset and current operator compatibility")
+		log.V(1).Info("Checking owner apiVersion")
 		objectMetadata := currentStatefulSet.GetObjectMeta()
-		log.Info(fmt.Sprintf("ObjectMetadata: %s", objectMetadata))
+		log.V(1).Info(fmt.Sprintf("ObjectMetadata: %s", objectMetadata))
 		ownerReferenceArray := objectMetadata.GetOwnerReferences()
-		log.Info(fmt.Sprintf("ownerReferenceArray: %s", ownerReferenceArray))
+		log.V(1).Info(fmt.Sprintf("ownerReferenceArray: %s", ownerReferenceArray))
 		if 0 < len(ownerReferenceArray) {
 			// got at least one owner
-			log.Info("ownerReferenceArray has at least one owner")
-			log.Info(fmt.Sprintf("ownerReference[0].APIVersion: %s", ownerReferenceArray[0].APIVersion))
+			log.V(1).Info("ownerReferenceArray has at least one owner")
+			log.V(1).Info(fmt.Sprintf("ownerReference[0].APIVersion: %s", ownerReferenceArray[0].APIVersion))
 			if "broker.amq.io/v2alpha4" != ownerReferenceArray[0].APIVersion {
 				// nuke it and recreate
-				log.Info(fmt.Sprintf("ownerReference[0].APIVersion: %s - removing in favour of upgraded v2alpha4", ownerReferenceArray[0].APIVersion))
-				deleteErr := resources.Delete(ssNamespacedName, client, currentStatefulSet)
-				if nil == deleteErr {
-					log.Info(fmt.Sprintf("sucessfully deleted ownerReference[0].APIVersion: %s, recreating v2alpha4 version for use", ownerReferenceArray[0].APIVersion))
-					currentStatefulSet = NewStatefulSetForCR(fsm.customResource)
-					firstTime = true
-				}
+				log.V(1).Info(fmt.Sprintf("ownerReference[0].APIVersion: %s - removing in favour of upgraded v2alpha4", ownerReferenceArray[0].APIVersion))
+				log.Info("Statefulset recreation required for current operator compatibility")
+				statefulsetRecreationRequired = true
 			}
 		}
+		log.V(1).Info("Checking statefulset for CONFIG_INSTANCE_DIR existence")
+		configInstanceDirEnvVar := environments.Retrieve(currentStatefulSet.Spec.Template.Spec.Containers, "CONFIG_INSTANCE_DIR")
+		if nil == configInstanceDirEnvVar {
+			log.Info("CONFIG_INSTANCE_DIR environment variable NOT found, ensuring existing statefulset operator compatibility")
+			log.Info("Statefulset recreation required for current operator compatibility")
+			statefulsetRecreationRequired = true
+		}
+		if statefulsetRecreationRequired {
+			log.Info("Recreating existing statefulset")
+			deleteErr := resources.Delete(ssNamespacedName, client, currentStatefulSet)
+			if nil == deleteErr {
+				log.Info(fmt.Sprintf("sucessfully deleted ownerReference[0].APIVersion: %s, recreating v2alpha4 version for use", ownerReferenceArray[0].APIVersion))
+				currentStatefulSet = NewStatefulSetForCR(fsm.customResource)
+				firstTime = true
+			} else {
+				log.Info("statefulset recreation failed!")
+			}
+		}
+
 		//update statefulset with customer resource
 		log.Info("Calling ProcessAddressSettings")
 		if reconciler.ProcessAddressSettings(fsm.customResource, fsm.prevCustomResource, client) {
